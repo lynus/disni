@@ -135,7 +135,7 @@ public class RdmaServerEndpoint<C extends RdmaEndpoint> {
 			endpoint.accept();
 			return endpoint;
 		} catch (Exception e) {
-			throw new IOException(e);
+			throw new IOException(e.toString());
 		}
 	}
 	
@@ -158,7 +158,7 @@ public class RdmaServerEndpoint<C extends RdmaEndpoint> {
 				logger.info("got event type + UNKNOWN, serverAddress " + this.getSrcAddr());
 			}
 		} catch(Exception e){
-			throw new IOException(e);
+			throw new IOException(e.toString());
 		}
 	}
 	

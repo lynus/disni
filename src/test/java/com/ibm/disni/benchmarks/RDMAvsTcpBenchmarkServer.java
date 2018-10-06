@@ -56,7 +56,7 @@ public class RDMAvsTcpBenchmarkServer implements RdmaEndpointFactory<SendRecvSer
     socketChannel.configureBlocking(true);
     socketChannel.socket().setSendBufferSize(bufferSize);
     socketChannel.socket().setReceiveBufferSize(bufferSize);
-    System.out.println("Accepted connection from " + socketChannel.getRemoteAddress());
+//    System.out.println("Accepted connection from " + socketChannel.getRemoteAddress());
     for (int i = 0; i < loopCount; i++) {
       int read = 0;
       int written = 0;

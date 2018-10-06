@@ -5,7 +5,7 @@
   <groupId>com.ibm.disni</groupId>
   <artifactId>disni</artifactId>
   <packaging>jar</packaging>
-  <version>1.9</version>
+  <version>1.9-gnuclasspath</version>
   <name>disni</name>
   <description>DiSNI (Direct Storage and Networking Interface) is a Java library for direct storage and networking access from userpace.</description>
   <url>http://github.com/zrlio/disni</url>
@@ -179,8 +179,13 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>8</source>
-          <target>8</target>
+	  <verbose>true</verbose>	
+	  <fork>true</fork>	
+          <source>6</source>
+          <target>6</target>
+	<compilerArguments>
+	  <bootclasspath>-Xbootclasspath/:/home/lynus/java_staff/rvmrt.jar</bootclasspath>
+	</compilerArguments>
         </configuration>
       </plugin>
     </plugins>
