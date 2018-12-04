@@ -3,6 +3,7 @@ package intruder;
 import com.ibm.disni.RdmaActiveEndpointGroup;
 import com.ibm.disni.RdmaEndpointFactory;
 import com.ibm.disni.verbs.RdmaCmId;
+import org.jikesrvm.classloader.RVMType;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -10,6 +11,7 @@ import java.net.InetSocketAddress;
 public class Factory implements RdmaEndpointFactory<Endpoint> {
     static private RdmaActiveEndpointGroup<Endpoint> group;
     static private Factory self;
+    static private RdmaClassIdManager idManager = new RdmaClassIdManager();
     private Factory() {}
     static {
         try {
@@ -33,4 +35,19 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
     static public Endpoint newEndpoint() throws IOException {
         return group.createEndpoint();
     }
+
+    static public int registerRdmaClass(Class cls) {
+        return idManager.registerClass(cls);
+    }
+
+    static public Class query(int id) {
+        RVMType type = idManager.query(id);
+        if (type == null)
+            return null;
+        return type.getClassForType();
+    }
+    static public int query(Class cls) {
+        return idManager.query(cls);
+    }
+
 }

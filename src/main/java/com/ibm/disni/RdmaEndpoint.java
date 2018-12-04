@@ -273,6 +273,10 @@ public class RdmaEndpoint {
 	public SVCRegMr registerMemory(ByteBuffer buffer) throws IOException {
 		return pd.regMr(buffer, access);
 	}
+
+	public SVCRegMr registerMemory(long address, int length) throws IOException{
+		return pd.regMr(address, length, access);
+	}
 	
 	/**
 	 * Post a receive operation on this endpoint.
