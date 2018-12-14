@@ -16,7 +16,7 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
     static {
         try {
             self = new Factory();
-            group = new RdmaActiveEndpointGroup<Endpoint>(10, false, 64, 16, 64);
+            group = new RdmaActiveEndpointGroup<Endpoint>(10, false, 64, Utils.MAXSGEPERWR, 64);
             group.init(self);
         } catch (IOException e) {
             throw new ExceptionInInitializerError(e);
@@ -48,6 +48,10 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
     }
     static public int query(Class cls) {
         return idManager.query(cls);
+    }
+
+    static public void close() throws InterruptedException, IOException {
+        group.close();
     }
 
 }

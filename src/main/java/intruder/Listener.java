@@ -21,4 +21,8 @@ public class Listener {
     public Endpoint accept() throws IOException {
         return serverEndpoint.accept();
     }
+
+    public void close() throws IOException, InterruptedException {
+        serverEndpoint.close();
+    }
 }

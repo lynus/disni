@@ -11,6 +11,10 @@ public class RdmaClassIdManager{
     private ConcurrentHashMap<RVMType, Integer> classToIdMap = new ConcurrentHashMap<RVMType, Integer>();
     private ConcurrentHashMap<Integer, RVMType> idToClassMap = new ConcurrentHashMap<Integer, RVMType>();
     private AtomicInteger counter = new AtomicInteger();
+    static public final int ARRAYTYPEMASK = 1 << 31;
+    static public final int SCALARTYPEMASK = ~ARRAYTYPEMASK;
+    static public final int ARRAYTYPE = 1 << 31;
+    static public final int NONARRAYTYPE = 0;
     public int registerClass(Class cls) {
        Integer ret;
        String className = cls.getCanonicalName();

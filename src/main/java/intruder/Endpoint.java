@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import org.jikesrvm.classloader.RVMArray;
 import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
 import org.jikesrvm.mm.mminterface.MemoryManager;
@@ -25,6 +26,7 @@ import org.mmtk.utility.heap.layout.Map64;
 import org.vmmagic.unboxed.Address;
 import org.vmmagic.unboxed.ObjectReference;
 
+import static intruder.RdmaClassIdManager.SCALARTYPEMASK;
 import static org.mmtk.utility.Constants.MIN_ALIGNMENT;
 
 public class Endpoint extends RdmaActiveEndpoint {
@@ -42,6 +44,12 @@ public class Endpoint extends RdmaActiveEndpoint {
 
     @Override
     public void dispatchCqEvent(IbvWC ibvWC) throws IOException {
+        if (IbvWC.IbvWcStatus.valueOf(ibvWC.getStatus()) != IbvWC.IbvWcStatus.IBV_WC_SUCCESS) {
+            System.out.println("WC error!!!!!!");
+            System.out.println(IbvWC.IbvWcStatus.valueOf(ibvWC.getStatus()).toString());
+        }
+        if (ibvWC.getWr_id() == 2323)
+            System.out.println("WC got array receive!");
         wcEvents.add(ibvWC);
     }
 
@@ -62,13 +70,22 @@ public class Endpoint extends RdmaActiveEndpoint {
 
 
     }
-
+    public void readyToReiveId() throws IOException {
+        idBuf.execRecv();
+    }
     public void sendIds(Class cls) throws IOException, InterruptedException {
         idBuf.sendIds(cls);
+    }
+    public void sendArrayId(Class cls, int len) throws IOException, InterruptedException {
+        idBuf.sendArrayId(cls, len);
     }
 
     public int waitIds() throws IOException, InterruptedException {
         return idBuf.waitIds();
+    }
+
+    public int getArrayLength() {
+        return idBuf.getArrayLength();
     }
 
     public void waitIdsAck() throws IOException, InterruptedException {
@@ -79,21 +96,20 @@ public class Endpoint extends RdmaActiveEndpoint {
         idBuf.sendIdsAck();
     }
 
-    public Object prepareObject(int id) throws IOException {
-        RVMType type = java.lang.JikesRVMSupport.getTypeForClass(Factory.query(id));
-        if (type == null || !type.isInitialized()) {
-            throw new IOException("class not found or not initialized!");
-        }
+    public static class AllocBuf{
+        Address start;
+        Object object;
+        int len;
+    }
 
-
-        //allocate space
-        RVMClass cls = type.asClass();
+    protected AllocBuf allocateScalar(RVMClass cls) {
         //see MemoryManager.allocateScalar()
         int allocator = Plan.ALLOC_NON_MOVING;
         int site = MemoryManager.getAllocationSite(false);
         int align = 8;
         int offset = ObjectModel.getOffsetForAlignment(cls, false);
         int size = cls.getInstanceSize();
+        AllocBuf allocBuf = new AllocBuf();
         Selected.Mutator mutator = Selected.Mutator.get();
         int bytes = org.jikesrvm.runtime.Memory.alignUp(cls.getInstanceSize(), MIN_ALIGNMENT);
         Address region = mutator.alloc(bytes, align, offset, allocator, site);
@@ -103,10 +119,57 @@ public class Endpoint extends RdmaActiveEndpoint {
 
         if (cls.hasFinalizer())
             MemoryManager.addFinalizer(obj);
-        //end of allocation
-        Utils.postReceiveObject(region.plus(JavaHeader.minimumObjectSize()), size - JavaHeader.minimumObjectSize(), this);
+        allocBuf.object =obj;
+        allocBuf.start = region.plus(JavaHeader.minimumObjectSize());
+        allocBuf.len = size - JavaHeader.minimumObjectSize();
+        return allocBuf;
+    }
+
+    protected AllocBuf allocateScalar(RVMArray array, int len) throws  IOException{
+        if (!array.isInitialized()) {
+            array.resolve();
+            array.instantiate();
+            array.initialize();
+        }
+        int allocator = Plan.ALLOC_NON_MOVING;
+        int site = MemoryManager.getAllocationSite(false);
+        int align = ObjectModel.getAlignment(array);
+        int offset = ObjectModel.getOffsetForAlignment(array, false);
+        int headersize = ObjectModel.computeArrayHeaderSize(array);
+        int size = (len << array.getLogElementSize()) + headersize;
+
+        Selected.Mutator mutator = Selected.Mutator.get();
+        int bytes = org.jikesrvm.runtime.Memory.alignUp(size, MIN_ALIGNMENT);
+        Address region = mutator.alloc(bytes, align, offset, allocator, site);
+        Object obj = ObjectModel.initializeArray(region, array.getTypeInformationBlock(), len, size);
+        mutator.postAlloc(ObjectReference.fromObject(obj), ObjectReference.fromObject(array.getTypeInformationBlock()),
+                size, allocator);
+        AllocBuf allocBuf = new AllocBuf();
+        allocBuf.object = obj;
+        allocBuf.start = region.plus(JavaHeader.OBJECT_REF_OFFSET);
+        allocBuf.len = size - headersize;
+        return allocBuf;
+    }
+
+    public Object prepareObject(int id) throws IOException {
+        RVMType type = Utils.ensureIdValid(id);
+        AllocBuf allocBuf = allocateScalar(type.asClass());
+        Utils.postReceiveObject(allocBuf.start, allocBuf.len, this);
         //note obj is empty
-        return obj;
+        return allocBuf.object;
+    }
+
+    public  Object prepareArray(int id, int len) throws IOException {
+        RVMType type = Utils.ensureIdValid(id);
+        AllocBuf allocBuf = allocateScalar(type.getArrayTypeForElementType(), len);
+        Object[] array = (Object[])allocBuf.object;
+        AllocBuf[] elemAllocBuf = new AllocBuf[len];
+        for (int i = 0; i < len; i++) {
+            elemAllocBuf[i] = allocateScalar(type.asClass());
+            array[i] = elemAllocBuf[i].object;
+        }
+        Utils.postReceiveMultiObjects(elemAllocBuf, this);
+        return allocBuf.object;
     }
 
     public void sendObject(Object obj) throws IOException, InterruptedException {
@@ -119,6 +182,21 @@ public class Endpoint extends RdmaActiveEndpoint {
         Address region = Magic.objectAsAddress(obj).minus(JavaHeaderConstants.ARRAY_LENGTH_BYTES);
         int size = cls.getInstanceSize() - JavaHeader.minimumObjectSize();
         Utils.postSendObject(region, size, this);
+    }
+
+    public void sendArray(Object[] array) throws IOException, InterruptedException {
+        RVMType type = java.lang.JikesRVMSupport.getTypeForClass(array.getClass().getComponentType());
+        if (type == null || !type.isInitialized()) {
+            throw new IOException(("component class not found or not initialized!"));
+        }
+        RVMClass cls = type.asClass();
+        AllocBuf[] allocBufs = new AllocBuf[array.length];
+        for (int i = 0; i < allocBufs.length; i++) {
+            allocBufs[i] = new AllocBuf();
+            allocBufs[i].start = Magic.objectAsAddress(array[i]).minus(JavaHeaderConstants.ARRAY_LENGTH_BYTES);
+            allocBufs[i].len = cls.getInstanceSize() - JavaHeader.minimumObjectSize();
+        }
+        Utils.postSendMultiObjects(allocBufs, this);
     }
     public void registerHeap() throws IOException {
         baseAddress = ((Map64) HeapLayout.vmMap).getSpaceBaseAddress(rdmaSpace);
@@ -172,6 +250,7 @@ public class Endpoint extends RdmaActiveEndpoint {
 
         public void execRecv() throws IOException {
             svcPostRecv.execute();
+            buf.clear();
         }
 
         public int waitIds() throws InterruptedException, IOException {
@@ -180,20 +259,41 @@ public class Endpoint extends RdmaActiveEndpoint {
                 throw new IOException("expected readid complete");
             }
             int num = buf.getInt();
-            Class cls = Factory.query(num);
-            System.out.println("get num of id: " + num + " class: " + cls.getCanonicalName());
+            Class cls = Factory.query(num & SCALARTYPEMASK);
+            System.out.println("get num of id: " + Integer.toHexString(num) + " class: " + cls.getCanonicalName());
             return num;
+        }
+
+        public int getArrayLength() {
+            return buf.getInt();
         }
         public void sendIds(Class cls) throws  IOException, InterruptedException {
             int id = Factory.query(cls);
             if (id == -1)
                 throw new IOException("type not registered: " + cls.getCanonicalName());
+            buf.clear();
             buf.putInt(id);
             svcPostSend.execute();
             IbvWC wc = wcEvents.take();
             if (wc.getWr_id() != 98L) {
                 throw new IOException("expected sendIds complete");
             }
+        }
+
+        public void sendArrayId(Class<?> cls, int len) throws IOException, InterruptedException {
+            Class elemCls = cls.getComponentType();
+            int id = Factory.query(elemCls);
+            if (id == -1)
+                throw new IOException("type not registered: " + cls.getCanonicalName());
+            id = id | RdmaClassIdManager.ARRAYTYPE;
+            buf.clear();
+            buf.putInt(id).putInt(len);
+            svcPostSend.execute();
+            IbvWC wc = wcEvents.take();
+            if (wc.getWr_id() != 98L) {
+                throw new IOException("expected sendIds complete");
+            }
+
         }
         public void waitIdsAck() throws InterruptedException, IOException {
             IbvWC wc = wcEvents.take();
