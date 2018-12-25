@@ -3,6 +3,7 @@ package intruder.tests;
 import intruder.Endpoint;
 import intruder.Factory;
 import intruder.RdmaClassIdManager;
+import intruder.Utils;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -18,7 +19,7 @@ public class Client {
         System.out.println("connecting to server...");
         ep.connect(address, 10);
         System.out.println("connected!");
-        int rc_odp_cap = ep.queryODPSupport();
+        Utils.checkODPcaps(ep.queryODPSupport());
         ep.registerHeap();
         Factory.registerRdmaClass(TargetPrimitiveObject.class);
         Factory.registerRdmaClass(TargetPrimitiveObject.class);

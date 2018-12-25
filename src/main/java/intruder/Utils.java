@@ -9,6 +9,7 @@ import org.vmmagic.unboxed.Address;
 import java.io.IOException;
 import java.util.LinkedList;
 
+import static com.ibm.disni.verbs.IbvContext.*;
 import static intruder.RdmaClassIdManager.SCALARTYPEMASK;
 
 public class Utils {
@@ -142,5 +143,25 @@ public class Utils {
         }
         svcPostSend = ep.postSend(wrList);
         svcPostSend.execute().free();
+    }
+
+    static public void checkODPcaps(int rdmaCaps) {
+        if ((rdmaCaps & IBV_ODP_SUPPORT_SEND) != 0)
+            System.out.println("ODP send supported");
+        else
+            System.out.println("ODP send not supported");
+
+        if ((rdmaCaps & IBV_ODP_SUPPORT_RECV) != 0)
+            System.out.println("ODP recv supported");
+        else
+            System.out.println("ODP recv not supported");
+        if ((rdmaCaps & IBV_ODP_SUPPORT_WRITE) != 0)
+            System.out.println("ODP write supported");
+        else
+            System.out.println("ODP write not supported");
+        if ((rdmaCaps & IBV_ODP_SUPPORT_READ) != 0)
+            System.out.println("ODP read supported");
+        else
+            System.out.println("ODP read not supported");
     }
 }
