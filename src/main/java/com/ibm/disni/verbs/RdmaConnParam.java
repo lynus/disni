@@ -50,6 +50,7 @@ public class RdmaConnParam {
 	protected byte rnr_retry_count;
 	protected byte srq;
 	protected int qp_num;
+	protected boolean useODP;
 
 	public RdmaConnParam() {
 		this.private_data_addr = 0;
@@ -61,6 +62,7 @@ public class RdmaConnParam {
 		this.rnr_retry_count = 0;
 		this.srq = 0;
 		this.qp_num = 0;
+		this.useODP = false;
 	}
 
 	/**
@@ -164,7 +166,7 @@ public class RdmaConnParam {
 	 *
 	 * @param retry_count the new retry count.
 	 */
-	public void setRetry_count(byte retry_count) throws IOException {
+	public void setRetry_count(byte retry_count) {
 		this.retry_count = retry_count;
 	}
 
@@ -220,5 +222,12 @@ public class RdmaConnParam {
 	 */
 	public void setQp_num(int qp_num) throws IOException {
 		throw new IOException("Operation currently not supported");
+	}
+
+	public void setUseODP(boolean odp) {
+		this.useODP = odp;
+	}
+	public boolean getUseODP() {
+		return useODP;
 	}
 }

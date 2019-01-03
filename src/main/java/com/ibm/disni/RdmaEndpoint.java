@@ -41,6 +41,8 @@ import com.ibm.disni.verbs.SVCPostSend;
 import com.ibm.disni.verbs.SVCRegMr;
 import com.ibm.disni.util.DiSNILogger;
 
+import static com.ibm.disni.verbs.IbvContext.*;
+
 
 /**
  * This class represents an RDMA client endpoint. 
@@ -127,8 +129,16 @@ public class RdmaEndpoint {
 		
 		while(connState < CONN_STATE_CONNECTED){
 			wait();
-		}			
-	}		
+		}
+		if (connParam.getUseODP()) {
+			int caps = queryODPSupport();
+			int full_caps = IBV_ODP_SUPPORT_SEND | IBV_ODP_SUPPORT_RECV | IBV_ODP_SUPPORT_WRITE | IBV_ODP_SUPPORT_READ;
+			if (caps == -1 || (caps & full_caps) != full_caps) {
+				throw new IOException("device does not support ODP");
+			}
+		}
+
+	}
 	
 	/* (non-Javadoc)
 	 * @see com.ibm.jverbs.endpoints.ICmConsumer#dispatchCmEvent(com.ibm.jverbs.cm.RdmaCmEvent)
@@ -186,7 +196,15 @@ public class RdmaEndpoint {
 		idPriv.accept(connParam);			
 		while(connState < CONN_STATE_CONNECTED){
 			wait();
-		}		
+		}
+		if (connParam.getUseODP()) {
+			int caps = queryODPSupport();
+			int full_caps = IBV_ODP_SUPPORT_SEND | IBV_ODP_SUPPORT_RECV | IBV_ODP_SUPPORT_WRITE | IBV_ODP_SUPPORT_READ;
+			if (caps == -1 || (caps & full_caps) != full_caps) {
+				throw new IOException("device does not support ODP");
+			}
+		}
+
 	}
 
 	/**
@@ -274,8 +292,16 @@ public class RdmaEndpoint {
 		return pd.regMr(buffer, access);
 	}
 
+	public SVCRegMr registerMemoryODP(ByteBuffer buffer) throws  IOException {
+		return pd.regMrODP(buffer, access);
+	}
+
 	public SVCRegMr registerMemory(long address, int length) throws IOException{
 		return pd.regMr(address, length, access);
+	}
+
+	public SVCRegMr registerMemoryODP(long address, long length) throws IOException {
+		return pd.regMrODP(address, length, access);
 	}
 	
 	/**

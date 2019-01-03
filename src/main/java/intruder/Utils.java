@@ -9,11 +9,10 @@ import org.vmmagic.unboxed.Address;
 import java.io.IOException;
 import java.util.LinkedList;
 
-import static com.ibm.disni.verbs.IbvContext.*;
 import static intruder.RdmaClassIdManager.SCALARTYPEMASK;
 
 public class Utils {
-    static final int MAXSGEPERWR = 20;
+    static final int MAXSGEPERWR = 10;
     static public void ensureClassInitialized(RVMClass cls) {
         if (!cls.isInitialized())
         RuntimeEntrypoints.initializeClassForDynamicLink(cls);
@@ -61,7 +60,6 @@ public class Utils {
             sge.setLkey(LKey);
             sge.setLength(length);
             sge.setAddr(allocBufs[i].start.toLong());
-            System.out.format("wrapRecvWR start %x, end %x\n", sge.getAddr(), sge.getAddr() + sge.getLength());
             sgeList.add(sge);
         }
         wr.setSg_list(sgeList);
@@ -79,11 +77,11 @@ public class Utils {
             sge.setLkey(LKey);
             sge.setLength(length);
             sge.setAddr(allocBufs[i].start.toLong());
-            System.out.format("wrapSendWR start %x, end %x\n", sge.getAddr(), sge.getAddr() + sge.getLength());
             sgeList.add(sge);
         }
         wr.setSg_list(sgeList);
         wr.setOpcode(IbvSendWR.IBV_WR_SEND);
+        wr.setSend_flags(IbvSendWR.IBV_SEND_SIGNALED);
         wr.setWr_id(1212);
         return wr;
     }
@@ -101,6 +99,7 @@ public class Utils {
             wrList.add(wrapRecvWR(allocBufs, index, sgeN, ep.heapLKey));
             index += sgeN;
         }
+        ep.waitN = wrList.size();
         svcPostRecv = ep.postRecv(wrList);
         svcPostRecv.execute().free();
     }
@@ -122,10 +121,13 @@ public class Utils {
         wr = new IbvSendWR();
         wr.setSg_list(sgeList);
         wr.setOpcode(IbvSendWR.IBV_WR_SEND);
+        wr.setSend_flags(IbvSendWR.IBV_SEND_SIGNALED);
+        wr.setWr_id(999L);
         wrList = new LinkedList<IbvSendWR>();
         wrList.add(wr);
         svcPostSend = ep.postSend(wrList);
         svcPostSend.execute().free();
+        ep.waitEvent();
     }
 
     static public void postSendMultiObjects(Endpoint.AllocBuf[] allocBufs, Endpoint ep) throws IOException, InterruptedException {
@@ -133,7 +135,9 @@ public class Utils {
         LinkedList<IbvSendWR> wrList = new LinkedList<IbvSendWR>();
         int index = 0, len = allocBufs.length;
         int sgeN;
+        int wrN = 0;
         while (index < len) {
+            wrN++;
             if ((len - index) > MAXSGEPERWR)
                 sgeN = MAXSGEPERWR;
             else
@@ -143,25 +147,7 @@ public class Utils {
         }
         svcPostSend = ep.postSend(wrList);
         svcPostSend.execute().free();
-    }
-
-    static public void checkODPcaps(int rdmaCaps) {
-        if ((rdmaCaps & IBV_ODP_SUPPORT_SEND) != 0)
-            System.out.println("ODP send supported");
-        else
-            System.out.println("ODP send not supported");
-
-        if ((rdmaCaps & IBV_ODP_SUPPORT_RECV) != 0)
-            System.out.println("ODP recv supported");
-        else
-            System.out.println("ODP recv not supported");
-        if ((rdmaCaps & IBV_ODP_SUPPORT_WRITE) != 0)
-            System.out.println("ODP write supported");
-        else
-            System.out.println("ODP write not supported");
-        if ((rdmaCaps & IBV_ODP_SUPPORT_READ) != 0)
-            System.out.println("ODP read supported");
-        else
-            System.out.println("ODP read not supported");
+        for (int i = 0; i < wrN; i++)
+            ep.waitEvent();
     }
 }

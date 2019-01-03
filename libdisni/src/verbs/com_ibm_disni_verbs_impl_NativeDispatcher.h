@@ -239,6 +239,14 @@ JNIEXPORT jlong JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1regMr(
 
 /*
  * Class:     com_ibm_disni_verbs_impl_NativeDispatcher
+ * Method:    _regMrODP
+ * Signature: (JJIIJJJ)J
+ */
+JNIEXPORT jlong JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1regMrODP(
+    JNIEnv *, jobject, jlong, jlong, jlong, jint, jlong, jlong, jlong);
+
+/*
+ * Class:     com_ibm_disni_verbs_impl_NativeDispatcher
  * Method:    _deregMr
  * Signature: (J)I
  */

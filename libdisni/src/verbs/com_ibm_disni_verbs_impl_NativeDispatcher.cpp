@@ -889,12 +889,57 @@ JNIEXPORT jlong JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1regMr(
     }
   } else {
     log("j2c::regMr: protection null\n");
-     JNU_ThrowIOException(env, "j2c::regMr: protection null\n");
+    JNU_ThrowIOException(env, "j2c::regMr: protection null\n");
   }
 
   return obj_id;
 }
 
+/*
+ * Class:     com_ibm_disni_verbs_impl_NativeDispatcher
+ * Method:    _regMrODP
+ * Signature: (IIJIJJJ)V
+ */
+JNIEXPORT jlong JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1regMrODP(
+    JNIEnv *env, jobject obj, jlong pd, jlong address, jlong len, jint access,
+    jlong lkey, jlong rkey, jlong handle) {
+  struct ibv_exp_reg_mr_in in;
+  struct ibv_mr *mr = NULL;
+  unsigned long long obj_id = -1;
+
+  memset(&in, 0, sizeof(struct ibv_exp_reg_mr_in));
+  in.pd = (struct ibv_pd *)pd;
+  in.addr = (void *)address;
+  in.length = len;
+  in.exp_access = IBV_EXP_ACCESS_ON_DEMAND;
+  in.exp_access |= access & IBV_ACCESS_LOCAL_WRITE ? IBV_EXP_ACCESS_LOCAL_WRITE : 0;
+  in.exp_access |= access & IBV_ACCESS_REMOTE_WRITE ? IBV_EXP_ACCESS_REMOTE_WRITE : 0;
+  in.exp_access |= access & IBV_ACCESS_REMOTE_READ ? IBV_EXP_ACCESS_REMOTE_READ : 0;
+
+  if (in.pd != NULL) {
+    mr = ibv_exp_reg_mr(&in);
+    if (mr != NULL) {
+      obj_id = createObjectId(mr);
+
+      int *_lkey = (int *)lkey;
+      int *_rkey = (int *)rkey;
+      int *_handle = (int *)handle;
+
+      *_lkey = mr->lkey;
+      *_rkey = mr->rkey;
+      *_handle = mr->handle;
+
+      log("j2c::regMrODP: obj_id %p, mr %p\n", (void *)obj_id, (void *)mr, mr->lkey);
+    } else {
+      log("j2c::regMrODP: ibv_exp_reg_mr failed\n");
+      JNU_ThrowIOExceptionWithLastError(env, "j2c::regMrODP: ibv_exp_reg_mr failed");
+    }
+  } else {
+    log("j2c::regMr: protection null\n"); 
+    JNU_ThrowIOException(env, "j2c::regMr: protection null\n");
+  }
+  return obj_id;
+}
 /*
  * Class:     com_ibm_disni_verbs_impl_NativeDispatcher
  * Method:    _deregMr

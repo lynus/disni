@@ -49,6 +49,8 @@ public class SendRecvServer implements RdmaEndpointFactory<SendRecvServer.Custom
 		//create a EndpointGroup. The RdmaActiveEndpointGroup contains CQ processing and delivers CQ event to the endpoint.dispatchCqEvent() method.
 		endpointGroup = new RdmaActiveEndpointGroup<SendRecvServer.CustomServerEndpoint>(1000, false, 128, 4, 128);
 		endpointGroup.init(this);
+		endpointGroup.useODP();
+
 		//create a server endpoint
 		RdmaServerEndpoint<SendRecvServer.CustomServerEndpoint> serverEndpoint = endpointGroup.createServerEndpoint();
 
@@ -78,7 +80,7 @@ public class SendRecvServer implements RdmaEndpointFactory<SendRecvServer.Custom
 		//let's respond with a message
 		clientEndpoint.postSend(clientEndpoint.getWrList_send()).execute().free();
 		//when receiving the CQ event we know the message has been sent
-		clientEndpoint.getWcEvents().take();
+//		clientEndpoint.getWcEvents().take();
 		System.out.println("SimpleServer::message sent");
 
 		//close everything
@@ -165,7 +167,7 @@ public class SendRecvServer implements RdmaEndpointFactory<SendRecvServer.Custom
 			super.init();
 
 			for (int i = 0; i < buffercount; i++){
-				mrlist[i] = registerMemory(buffers[i]).execute().free().getMr();
+				mrlist[i] = registerMemoryODP(buffers[i]).execute().free().getMr();
 			}
 
 			this.dataBuf = buffers[0];
@@ -182,7 +184,7 @@ public class SendRecvServer implements RdmaEndpointFactory<SendRecvServer.Custom
 			sendWR.setWr_id(2000);
 			sendWR.setSg_list(sgeList);
 			sendWR.setOpcode(IbvSendWR.IBV_WR_SEND);
-			sendWR.setSend_flags(IbvSendWR.IBV_SEND_SIGNALED);
+//			sendWR.setSend_flags(IbvSendWR.IBV_SEND_SIGNALED);
 			wrList_send.add(sendWR);
 
 			sgeRecv.setAddr(recvMr.getAddr());

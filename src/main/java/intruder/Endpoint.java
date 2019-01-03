@@ -24,6 +24,7 @@ import org.mmtk.policy.Space;
 import org.mmtk.utility.heap.layout.HeapLayout;
 import org.mmtk.utility.heap.layout.Map64;
 import org.vmmagic.unboxed.Address;
+import org.vmmagic.unboxed.Extent;
 import org.vmmagic.unboxed.ObjectReference;
 
 import static intruder.RdmaClassIdManager.SCALARTYPEMASK;
@@ -35,6 +36,7 @@ public class Endpoint extends RdmaActiveEndpoint {
     static private final int ReservedSpaceForReceive = 1024;
     static private final int allocator = Plan.ALLOC_NON_MOVING;
     int heapLKey;
+    public int waitN;
     private ArrayBlockingQueue<IbvWC> wcEvents;
     protected IdBuf idBuf;
     public Endpoint(RdmaActiveEndpointGroup<? extends RdmaActiveEndpoint> group, RdmaCmId idPriv, boolean serverSide) throws IOException {
@@ -47,6 +49,7 @@ public class Endpoint extends RdmaActiveEndpoint {
         if (IbvWC.IbvWcStatus.valueOf(ibvWC.getStatus()) != IbvWC.IbvWcStatus.IBV_WC_SUCCESS) {
             System.out.println("WC error!!!!!!");
             System.out.println(IbvWC.IbvWcStatus.valueOf(ibvWC.getStatus()).toString());
+            System.out.println("wr id: " + ibvWC.getWr_id());
         }
         if (ibvWC.getWr_id() == 2323)
             System.out.println("WC got array receive!");
@@ -56,6 +59,12 @@ public class Endpoint extends RdmaActiveEndpoint {
     public  IbvWC waitEvent() throws InterruptedException {
         return wcEvents.take();
     }
+
+    public void drainEvent() throws InterruptedException {
+        while (wcEvents.peek() != null)
+            wcEvents.take();
+    }
+
     @Override
     protected synchronized void init() throws IOException {
         super.init();
@@ -198,6 +207,17 @@ public class Endpoint extends RdmaActiveEndpoint {
         }
         Utils.postSendMultiObjects(allocBufs, this);
     }
+    public void registerHeapODP() throws IOException {
+        baseAddress = ((Map64) HeapLayout.vmMap).getSpaceBaseAddress(rdmaSpace);
+        System.out.println("registerHeap rdmaspace base: " + Long.toHexString(baseAddress.toLong()));
+        mappedMark = ((MarkSweepSpace)rdmaSpace).getMappedHighMark();
+        //conservatively register the heap with the size equal to max total heap space.
+        Extent maxSize = org.jikesrvm.mm.mminterface.MemoryManager.maxMemory();
+        System.out.println("registerODP: memory length: " + (maxSize.toInt() >> 10) + "KB mappedMark: " + Long.toHexString(mappedMark.toLong()));
+        IbvMr mr = registerMemoryODP(baseAddress.toLong(), maxSize.toLong()).execute().free().getMr();
+        heapLKey = mr.getLkey();
+    }
+
     public void registerHeap() throws IOException {
         baseAddress = ((Map64) HeapLayout.vmMap).getSpaceBaseAddress(rdmaSpace);
         System.out.println("registerHeap rdmaspace base: " + Long.toHexString(baseAddress.toLong()));
@@ -206,7 +226,6 @@ public class Endpoint extends RdmaActiveEndpoint {
         IbvMr mr = registerMemory(baseAddress.toLong(), mappedMark.diff(baseAddress).toInt()).execute().free().getMr();
         heapLKey = mr.getLkey();
     }
-
     protected class IdBuf {
         private ByteBuffer buf;
         private IbvMr mr;
@@ -256,7 +275,7 @@ public class Endpoint extends RdmaActiveEndpoint {
         public int waitIds() throws InterruptedException, IOException {
             IbvWC wc = wcEvents.take();
             if (wc.getWr_id() != 99L) {
-                throw new IOException("expected readid complete");
+                throw new IOException("expected read complete get wr_id: " + wc.getWr_id());
             }
             int num = buf.getInt();
             Class cls = Factory.query(num & SCALARTYPEMASK);
@@ -275,9 +294,9 @@ public class Endpoint extends RdmaActiveEndpoint {
             buf.putInt(id);
             svcPostSend.execute();
             IbvWC wc = wcEvents.take();
-            if (wc.getWr_id() != 98L) {
-                throw new IOException("expected sendIds complete");
-            }
+//            if (wc.getWr_id() != 98L) {
+//                throw new IOException("expected sendIds complete");
+//            }
         }
 
         public void sendArrayId(Class<?> cls, int len) throws IOException, InterruptedException {
@@ -311,9 +330,9 @@ public class Endpoint extends RdmaActiveEndpoint {
             //svcPostSend.getWrMod(0).getSgeMod(0).setLength(4);
             svcPostSend.execute();
             IbvWC wc = wcEvents.take();
-            if (wc.getWr_id() != 98L) {
-                throw new IOException("expected sendIdsAck complete");
-            }
+//            if (wc.getWr_id() != 98L) {
+//                throw new IOException("expected sendIdsAck complete");
+//            }
         }
 
     }

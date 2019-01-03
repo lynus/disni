@@ -131,9 +131,17 @@ public class RdmaVerbsNat extends RdmaVerbs {
 		return new NatRegMrCall(this, nativeDispatcher, memAlloc, pd, buffer, access);
 	}
 
+	public SVCRegMr regMrODP(IbvPd pd, ByteBuffer buffer, int access) {
+		return new NatRegMrCall(this, nativeDispatcher, memAlloc, pd, buffer, access, 1);
+	}
+
 	public SVCRegMr regMr(IbvPd pd, long address, int length, int access) {
 		return new NatRegMrCall(this, nativeDispatcher, memAlloc, pd, address, length, access);
 
+	}
+
+	public SVCRegMr regMrODP(IbvPd pd, long address, long length, int access) {
+		return new NatRegMrCall(this, nativeDispatcher, memAlloc, pd, address, length, access, 1);
 	}
 
 	public int queryOdpSupport(IbvContext context){

@@ -113,9 +113,12 @@ public abstract class RdmaVerbs {
 	 * @throws Exception on failure.
 	 */
 	public abstract SVCRegMr regMr(IbvPd pd, ByteBuffer buffer, int access) throws IOException;
-	
+
+	public abstract SVCRegMr regMrODP(IbvPd pd, ByteBuffer buffer, int access) throws IOException;
+
 	public abstract SVCRegMr regMr(IbvPd pd, long address, int length, int access) throws IOException;
 
+	public abstract SVCRegMr regMrODP(IbvPd pd, long address, long length, int access) throws IOException;
 	/**
 	 * Query device RC capability for on demand paging support
 	 *

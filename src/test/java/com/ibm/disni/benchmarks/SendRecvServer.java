@@ -262,7 +262,7 @@ public class SendRecvServer implements RdmaEndpointFactory<SendRecvServer.SendRe
 			ArrayList<IbvSendWR> sendWRs = new ArrayList<IbvSendWR>(1);
 			LinkedList<IbvSge> sgeList = new LinkedList<IbvSge>();
 
-			IbvMr mr = registerMemory(sendBuf).execute().free().getMr();
+			IbvMr mr = registerMemoryODP(sendBuf).execute().free().getMr();
 			sendMRs[wrid] = mr;
 			IbvSge sge = new IbvSge();
 			sge.setAddr(mr.getAddr());
@@ -285,7 +285,7 @@ public class SendRecvServer implements RdmaEndpointFactory<SendRecvServer.SendRe
 			ArrayList<IbvRecvWR> recvWRs = new ArrayList<IbvRecvWR>(1);
 			LinkedList<IbvSge> sgeList = new LinkedList<IbvSge>();
 
-			IbvMr mr = registerMemory(recvBuf).execute().free().getMr();
+			IbvMr mr = registerMemoryODP(recvBuf).execute().free().getMr();
 			recvMRs[wrid] = mr;
 			IbvSge sge = new IbvSge();
 			sge.setAddr(mr.getAddr());

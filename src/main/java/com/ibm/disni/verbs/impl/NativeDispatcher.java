@@ -115,6 +115,7 @@ public class NativeDispatcher {
 	public native long _createCQ(long context, long compChannel, int ncqe, int comp_vector) throws IOException;
 	public native int _modifyQP(long qp, long attr) throws IOException;
 	public native long _regMr(long pd, long addr, int len, int access, long lkey, long rkey, long handle) throws IOException;
+	public native long _regMrODP(long pd, long addr, long len, int access, long lkey, long rkey, long handle) throws IOException;
 	public native int _queryOdpSupport(long context);
 	public native int _expPrefetchMr(long handle, long addr, int len) throws IOException;
 	public native void _deregMr(long handle) throws IOException;

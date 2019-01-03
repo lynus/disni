@@ -53,5 +53,7 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
     static public void close() throws InterruptedException, IOException {
         group.close();
     }
-
+    static public void useODP() {
+        group.useODP();
+    }
 }

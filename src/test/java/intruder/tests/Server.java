@@ -11,21 +11,15 @@ public class Server {
     public static void main(String[] args) throws Exception {
         Factory.registerRdmaClass(TargetSimpleObject.class);
         Factory.registerRdmaClass(TargetPrimitiveObject.class);
+        Factory.useODP();
+
         InetAddress ipAddress = InetAddress.getByName(args[0]);
         InetSocketAddress address = new InetSocketAddress(ipAddress, 8090);
         Listener listener = Factory.newListener(address);
         System.out.println("waiting for connection...");
         Endpoint ep = listener.accept();
-        ep.registerHeap();
+        ep.registerHeapODP();
         System.out.println("connected!");
-
-        ep.sendIds(TargetSimpleObject.class);
-        ep.waitIdsAck();
-        TargetSimpleObject obj = new TargetSimpleObject();
-        obj.B = 12345L;
-        ep.sendObject(obj);
-        System.out.println("object sent!");
-        ep.readyToReiveId();
 
         TargetSimpleObject[] array = new TargetSimpleObject[Integer.parseInt(args[1])];
         for (int i = 0; i < array.length; i++) {
@@ -36,11 +30,8 @@ public class Server {
         }
 
         ep.sendArrayId(TargetSimpleObject[].class, array.length);
-        System.out.println("sendArrayId finish!");
         ep.waitIdsAck();
-        System.out.println("waitIdAck finish!");
         ep.sendArray(array);
-        System.out.println("array sent!");
 
         ep.close();
         listener.close();

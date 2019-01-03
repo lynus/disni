@@ -44,16 +44,29 @@ public class NatRegMrCall extends SVCRegMr {
 	
 	private IbvMr mr;
 	private boolean valid;
-	
+	private boolean isODP;
+	private long lengthODP;
 	public NatRegMrCall(RdmaVerbsNat verbs, NativeDispatcher nativeDispatcher, MemoryAllocation memAlloc,
 						IbvPd pd, ByteBuffer buffer, int access) {
 		set(verbs, nativeDispatcher, memAlloc, pd, MemoryUtils.getAddress(buffer),
 			buffer.capacity(), access);
 	}
 
+
+	public NatRegMrCall(RdmaVerbsNat verbs, NativeDispatcher nativeDispatcher, MemoryAllocation memAlloc,
+						IbvPd pd, ByteBuffer buffer, int access, int ODP) {
+		setODP(verbs, nativeDispatcher, memAlloc, pd, MemoryUtils.getAddress(buffer),
+				buffer.capacity(), access);
+	}
+
 	public NatRegMrCall(RdmaVerbsNat verbs, NativeDispatcher nativeDispatcher, MemoryAllocation memAlloc,
 						IbvPd pd, long address, int length, int access) {
 		set(verbs, nativeDispatcher, memAlloc, pd, address, length, access);
+	}
+
+	public NatRegMrCall(RdmaVerbsNat verbs, NativeDispatcher nativeDispatcher, MemoryAllocation memAlloc,
+						   IbvPd pd, long address, long length, int access, int ODP) {
+		setODP(verbs, nativeDispatcher, memAlloc, pd, address, length, access);
 	}
 
 	private void set(RdmaVerbsNat verbs, NativeDispatcher nativeDispatcher, MemoryAllocation memAlloc,
@@ -69,19 +82,34 @@ public class NatRegMrCall extends SVCRegMr {
 		this.access = access;
 	}
 
+	private void setODP(RdmaVerbsNat verbs, NativeDispatcher nativeDispatcher, MemoryAllocation memAlloc,
+					 IbvPd pd, long address, long length, int access) {
+		set(verbs, nativeDispatcher, memAlloc, pd, address, 0, access);
+		this.lengthODP = length;
+		this.isODP = true;
+    }
+
 	public SVCRegMr execute() throws IOException {
+	    long objId;
 		cmd.getBuffer().clear();
 		if (!pd.isOpen()) {
 			throw new IOException("Trying to register memory with closed PD.");
 		}
-		long objId = nativeDispatcher._regMr(pd.getObjId(), userAddress, bufferCapacity, access, cmd.address(), cmd.address() + 4, cmd.address() + 8);
+		if (isODP == false) {
+			objId = nativeDispatcher._regMr(pd.getObjId(), userAddress, bufferCapacity, access, cmd.address(), cmd.address() + 4, cmd.address() + 8);
+		}
+		else
+			objId = nativeDispatcher._regMrODP(pd.getObjId(), userAddress, lengthODP, access, cmd.address(), cmd.address() + 4, cmd.address() + 8);
 		if (objId <= 0){
 			throw new IOException("Memory registration failed with " + objId);
 		} else {
 			int lkey = cmd.getBuffer().getInt();
 			int rkey = cmd.getBuffer().getInt();
 			int handle = cmd.getBuffer().getInt();
-			this.mr = new NatIbvMr(objId, null, userAddress, bufferCapacity, access, lkey, rkey, handle);
+			if (isODP == false)
+                this.mr = new NatIbvMr(objId, null, userAddress, bufferCapacity, access, lkey, rkey, handle);
+			else
+				this.mr = new NatIbvMr(objId, null, userAddress, (int)lengthODP, access, lkey, rkey, handle);
 		}
 		
 		return this;

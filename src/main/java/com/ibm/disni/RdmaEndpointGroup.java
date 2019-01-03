@@ -226,5 +226,11 @@ public abstract class RdmaEndpointGroup <C extends RdmaEndpoint> {
 		if (serverEndpointMap.containsKey(endpoint.getIdPriv())) {
 			serverEndpointMap.remove(endpoint.getIdPriv());
 		}
-	}		
+	}
+
+	public void useODP() {
+		connParam.setUseODP(true);
+		connParam.setRnr_retry_count((byte)7);
+		connParam.setRetry_count((byte)7);
+	}
 }

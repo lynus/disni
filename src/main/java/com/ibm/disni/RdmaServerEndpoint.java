@@ -164,7 +164,7 @@ public class RdmaServerEndpoint<C extends RdmaEndpoint> {
 	
 	/**
 	 * Close this endpoint. Destroy the Queue Pair (QP).
-	 * @throws InterruptedException 
+	 * @throws InterruptedException
 	 *
 	 * @throws Exception the exception
 	 */

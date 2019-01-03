@@ -52,12 +52,11 @@ public class IbvContext  {
 	protected int numCompVectors;
 
 	//ODP capabilities
-	public static int IBV_ODP_SUPPORT_SEND     = 1;
-	public static int IBV_ODP_SUPPORT_RECV     = 1 << 1;
-	public static int IBV_ODP_SUPPORT_WRITE    = 1 << 2;
-	public static int IBV_ODP_SUPPORT_READ     = 1 << 3;
-	public static int IBV_ODP_SUPPORT_ATOMIC   = 1 << 4;
-	
+	public final static int IBV_ODP_SUPPORT_SEND     = 1;
+	public final static int IBV_ODP_SUPPORT_RECV     = 1 << 1;
+	public final static int IBV_ODP_SUPPORT_WRITE    = 1 << 2;
+	public final static int IBV_ODP_SUPPORT_READ     = 1 << 3;
+	public final static int IBV_ODP_SUPPORT_ATOMIC   = 1 << 4;
 	protected IbvContext(int cmd_fd, int numCompVectors) throws IOException {
 		this.verbs = RdmaVerbs.open();
 		this.cmd_fd = cmd_fd;
