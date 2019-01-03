@@ -230,7 +230,9 @@ public abstract class RdmaEndpointGroup <C extends RdmaEndpoint> {
 
 	public void useODP() {
 		connParam.setUseODP(true);
+		// default rnr_retry_count is zero, which leads to IBV_WC_RNR_RETRY_EXC_ERR if ODP is used.
 		connParam.setRnr_retry_count((byte)7);
+		// not necessary, need for more testing.
 		connParam.setRetry_count((byte)7);
 	}
 }
