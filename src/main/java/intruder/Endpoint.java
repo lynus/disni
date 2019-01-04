@@ -2,6 +2,7 @@ package intruder;
 
 import com.ibm.disni.RdmaActiveEndpoint;
 import com.ibm.disni.RdmaActiveEndpointGroup;
+import com.ibm.disni.util.DiSNILogger;
 import com.ibm.disni.verbs.*;
 
 import java.io.IOException;
@@ -17,12 +18,14 @@ import org.jikesrvm.mm.mminterface.Selected;
 import org.jikesrvm.objectmodel.JavaHeader;
 import org.jikesrvm.objectmodel.JavaHeaderConstants;
 import org.jikesrvm.objectmodel.ObjectModel;
+import org.jikesrvm.runtime.Callbacks;
 import org.jikesrvm.runtime.Magic;
 import org.mmtk.plan.Plan;
 import org.mmtk.policy.MarkSweepSpace;
 import org.mmtk.policy.Space;
 import org.mmtk.utility.heap.layout.HeapLayout;
 import org.mmtk.utility.heap.layout.Map64;
+import org.slf4j.Logger;
 import org.vmmagic.unboxed.Address;
 import org.vmmagic.unboxed.Extent;
 import org.vmmagic.unboxed.ObjectReference;
@@ -39,6 +42,7 @@ public class Endpoint extends RdmaActiveEndpoint {
     public int waitN;
     private ArrayBlockingQueue<IbvWC> wcEvents;
     protected IdBuf idBuf;
+    private static final Logger log = DiSNILogger.getLogger();
     public Endpoint(RdmaActiveEndpointGroup<? extends RdmaActiveEndpoint> group, RdmaCmId idPriv, boolean serverSide) throws IOException {
         super(group, idPriv, serverSide);
         wcEvents = new ArrayBlockingQueue<IbvWC>(10);
@@ -52,7 +56,7 @@ public class Endpoint extends RdmaActiveEndpoint {
             System.out.println("wr id: " + ibvWC.getWr_id());
         }
         if (ibvWC.getWr_id() == 2323)
-            System.out.println("WC got array receive!");
+            log.warn("get array recv completion");
         wcEvents.add(ibvWC);
     }
 
@@ -216,6 +220,7 @@ public class Endpoint extends RdmaActiveEndpoint {
         System.out.println("registerODP: memory length: " + (maxSize.toInt() >> 10) + "KB mappedMark: " + Long.toHexString(mappedMark.toLong()));
         IbvMr mr = registerMemoryODP(baseAddress.toLong(), maxSize.toLong()).execute().free().getMr();
         heapLKey = mr.getLkey();
+        Callbacks.addRdmaSpaceGrowMonitor(rdmaSpace, new Prefetcher(mr));
     }
 
     public void registerHeap() throws IOException {
