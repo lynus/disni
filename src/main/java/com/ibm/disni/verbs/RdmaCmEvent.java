@@ -73,6 +73,7 @@ public class RdmaCmEvent {
 	protected RdmaCmId listenIdPriv;
 	protected RdmaCmId connIdPriv;
 	protected RdmaConnParam conn;
+	protected int connectId;
 
 	public RdmaCmEvent(int event, RdmaCmId listenId, RdmaCmId clientId) throws IOException {
 		this.cm = RdmaCm.open();
@@ -80,7 +81,8 @@ public class RdmaCmEvent {
 		this.status = -1;
 		this.listenIdPriv = listenId;
 		this.connIdPriv = clientId;
-		this.conn = new RdmaConnParam();		
+		this.conn = new RdmaConnParam();
+		this.connectId = -1;
 	}
 
 	/**
@@ -117,6 +119,14 @@ public class RdmaCmEvent {
 	 */
 	public RdmaCmId getConnIdPriv() {
 		return connIdPriv;
+	}
+
+	public void setConnectId(int id) {
+		this.connectId = id;
+	}
+
+	public int getConnectId() {
+		return connectId;
 	}
 
 	/**

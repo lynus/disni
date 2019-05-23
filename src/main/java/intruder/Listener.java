@@ -19,10 +19,13 @@ public class Listener {
     }
 
     public Endpoint accept() throws IOException {
-        return serverEndpoint.accept();
+        Endpoint ep = serverEndpoint.accept();
+        ep.serverHost = bindAddress.getAddress();
+        return ep;
     }
 
     public void close() throws IOException, InterruptedException {
         serverEndpoint.close();
     }
+
 }

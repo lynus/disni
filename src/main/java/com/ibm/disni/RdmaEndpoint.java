@@ -26,6 +26,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import intruder.Endpoint;
 import org.slf4j.Logger;
 
 import com.ibm.disni.verbs.IbvMr;
@@ -156,6 +157,7 @@ public class RdmaEndpoint {
 			} else if (eventType == RdmaCmEvent.EventType.RDMA_CM_EVENT_ESTABLISHED.ordinal()) {
 				logger.info("got event type + RDMA_CM_EVENT_ESTABLISHED, srcAddress " + this.getSrcAddr() + ", dstAddress " + this.getDstAddr());
 				connState = CONN_STATE_CONNECTED;
+				handlePrivateData(cmEvent);
 				notifyAll();
 			} else if (eventType == RdmaCmEvent.EventType.RDMA_CM_EVENT_DISCONNECTED.ordinal()) {
 				logger.info("got event type + RDMA_CM_EVENT_DISCONNECTED, srcAddress " + this.getSrcAddr() + ", dstAddress " + this.getDstAddr());
@@ -193,7 +195,7 @@ public class RdmaEndpoint {
 		}		
 		
 		RdmaConnParam connParam = getConnParam();
-		idPriv.accept(connParam);			
+		idPriv.accept(connParam);
 		while(connState < CONN_STATE_CONNECTED){
 			wait();
 		}
@@ -390,5 +392,8 @@ public class RdmaEndpoint {
 
 	public int queryODPSupport() throws IOException {
 		return idPriv.getVerbs().queryOdpSupport();
+	}
+
+	public void handlePrivateData(RdmaCmEvent event) {
 	}
 }

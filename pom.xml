@@ -80,6 +80,13 @@
       <scope>system</scope>
       <systemPath>${project.basedir}/libs/jksvm.jar</systemPath>
     </dependency>
+    <dependency>
+      <groupId>com.ibm.darpc</groupId>
+      <artifactId>darpc</artifactId>
+      <version>1.8-java6</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/libs/darpc-1.8-java6.jar</systemPath>
+    </dependency>
   </dependencies>
 
   <profiles>

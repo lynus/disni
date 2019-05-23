@@ -354,7 +354,7 @@ Java_com_ibm_disni_verbs_impl_NativeDispatcher__1resolveRoute(JNIEnv *env,
 JNIEXPORT jint JNICALL
 Java_com_ibm_disni_verbs_impl_NativeDispatcher__1getCmEvent(
     JNIEnv *env, jobject obj, jlong channel, jlong listen_id, jlong client_id,
-    jint timeout) {
+    jlong connectId, jint timeout) {
   struct rdma_event_channel *cm_channel = NULL;
   struct rdma_cm_event *cm_event;
   jint event = -1;
@@ -384,6 +384,11 @@ Java_com_ibm_disni_verbs_impl_NativeDispatcher__1getCmEvent(
         } else {
           *_client_id = -1;
         }
+	
+	if (cm_event->param.conn.private_data != NULL)
+	  *(int *)connectId = *(int *)(cm_event->param.conn.private_data);
+        else
+	  *(int *)connectId = -1;
         rdma_ack_cm_event(cm_event);
       }
     }
@@ -435,7 +440,7 @@ JNIEXPORT void JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1connect(
  * Signature: (IJ)V
  */
 JNIEXPORT void JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1accept(
-    JNIEnv *env, jobject obj, jlong id, jint retry, jint rnr_retry) {
+    JNIEnv *env, jobject obj, jlong id, jint retry, jint rnr_retry, jlong private_data) {
   struct rdma_cm_id *cm_listen_id = NULL;
   struct rdma_conn_param conn_param;
 
@@ -445,6 +450,8 @@ JNIEXPORT void JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1accept(
 
   if (cm_listen_id != NULL) {
     memset(&conn_param, 0, sizeof(conn_param));
+    conn_param.private_data = (void *)private_data;
+    conn_param.private_data_len = 4;
     conn_param.initiator_depth = dev_attr.max_qp_rd_atom;
     conn_param.responder_resources = dev_attr.max_qp_rd_atom;
     conn_param.retry_count = (unsigned char)retry;

@@ -79,7 +79,7 @@ Java_com_ibm_disni_verbs_impl_NativeDispatcher__1resolveRoute(JNIEnv *, jobject,
  */
 JNIEXPORT jint JNICALL
 Java_com_ibm_disni_verbs_impl_NativeDispatcher__1getCmEvent(JNIEnv *, jobject,
-                                                            jlong, jlong, jlong,
+                                                            jlong, jlong, jlong, jlong,
                                                             jint);
 
 /*
@@ -96,7 +96,7 @@ JNIEXPORT void JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1connect(
  * Signature: (JII)I
  */
 JNIEXPORT void JNICALL Java_com_ibm_disni_verbs_impl_NativeDispatcher__1accept(
-    JNIEnv *, jobject, jlong, jint, jint);
+    JNIEnv *, jobject, jlong, jint, jint, jlong);
 
 /*
  * Class:     com_ibm_disni_verbs_impl_NativeDispatcher

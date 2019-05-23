@@ -96,10 +96,10 @@ public class NativeDispatcher {
 	public native void _listen(long id, int backlog)  throws IOException;
 	public native void _resolveAddr(long id, long src, long dst, int timeout) throws IOException;
 	public native void _resolveRoute(long id, int timeout) throws IOException;
-	public native int _getCmEvent(long channel, long listenid, long clientid, int timeout);
+	public native int _getCmEvent(long channel, long listenid, long clientid, long connectId, int timeout);
 	public native void _connect(long id, int retrycount, int rnrretrycount, long privdataaddr, byte privdatalen)
 		throws IOException;
-	public native void _accept(long id, int retrycount, int rnrretrycount) throws IOException;
+	public native void _accept(long id, int retrycount, int rnrretrycount, long private_data) throws IOException;
 	public native int _ackCmEvent(int cmEvent);
 	public native int _disconnect(long id);
 	public native int _destroyEventChannel(long fd);

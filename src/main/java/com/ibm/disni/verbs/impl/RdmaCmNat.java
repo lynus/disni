@@ -188,16 +188,19 @@ public class RdmaCmNat extends RdmaCm {
 		NatRdmaEventChannel channelImpl = (NatRdmaEventChannel) cmChannel;
 		RdmaCmEvent cmEvent = null;
 		
-		MemBuf memBuf = memAlloc.allocate(2*8);
+		MemBuf memBuf = memAlloc.allocate(2*8 + 4);
 		ByteBuffer buf = memBuf.getBuffer();
 		if (!channelImpl.isOpen()) {
 			throw new IOException("Trying to get CM event on closed channel.");
 		}
-		int event = nativeDispatcher._getCmEvent(channelImpl.getObjId(), memBuf.address(), memBuf.address() + 8, timeout);
+		long addr = memBuf.address();
+		int event = nativeDispatcher._getCmEvent(channelImpl.getObjId(), addr, addr + 8,
+				addr + 16, timeout);
 		
 		if (event >= 0){
 			long _listenId = buf.getLong();
-			long _clientId = buf.getLong();  
+			long _clientId = buf.getLong();
+			int connnectId = buf.getInt();
 			NatCmaIdPrivate idPriv = channelImpl.getCmId(_listenId);
 			NatCmaIdPrivate clientId = channelImpl.getCmId(_clientId);
 			if (event == RdmaCmEvent.EventType.RDMA_CM_EVENT_CONNECT_REQUEST.ordinal()){
@@ -206,6 +209,8 @@ public class RdmaCmNat extends RdmaCm {
 				channelImpl.addCmId(clientId);
 			} 
 			cmEvent = new RdmaCmEvent(event, idPriv, clientId);
+			if (connnectId != -1)
+                cmEvent.setConnectId(connnectId);
 		}
 		
 		memBuf.free();
@@ -234,7 +239,7 @@ public class RdmaCmNat extends RdmaCm {
 		if (!idPriv.isOpen()) {
 			throw new IOException("Trying to call accept() with closed ID");
 		}
-		nativeDispatcher._accept(idPriv.getObjId(), connParam.getRetry_count(), connParam.getRnr_retry_count());
+		nativeDispatcher._accept(idPriv.getObjId(), connParam.getRetry_count(), connParam.getRnr_retry_count(), connParam.getPrivate_data());
 		logger.info("accept, id " + id.getPs());
 		
 		return;

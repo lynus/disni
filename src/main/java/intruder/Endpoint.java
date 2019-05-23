@@ -3,10 +3,15 @@ package intruder;
 import com.ibm.disni.RdmaActiveEndpoint;
 import com.ibm.disni.RdmaActiveEndpointGroup;
 import com.ibm.disni.util.DiSNILogger;
+import com.ibm.disni.util.MemoryUtils;
 import com.ibm.disni.verbs.*;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 
@@ -18,6 +23,7 @@ import org.jikesrvm.mm.mminterface.Selected;
 import org.jikesrvm.objectmodel.JavaHeader;
 import org.jikesrvm.objectmodel.JavaHeaderConstants;
 import org.jikesrvm.objectmodel.ObjectModel;
+import org.jikesrvm.runtime.Callbacks;
 import org.jikesrvm.runtime.Magic;
 import org.mmtk.plan.Plan;
 import org.mmtk.policy.MarkSweepSpace;
@@ -42,11 +48,30 @@ public class Endpoint extends RdmaActiveEndpoint {
     private ArrayBlockingQueue<IbvWC> wcEvents;
     protected IdBuf idBuf;
     private static final Logger log = DiSNILogger.getLogger();
+    public InetAddress serverHost;
+    private int connectionId = -1;
+    private Stream stream;
     public Endpoint(RdmaActiveEndpointGroup<? extends RdmaActiveEndpoint> group, RdmaCmId idPriv, boolean serverSide) throws IOException {
         super(group, idPriv, serverSide);
         wcEvents = new ArrayBlockingQueue<IbvWC>(10);
     }
 
+    public IntruderOutStream getOutStream() throws IOException {
+        if (isServerSide()) {
+            throw new IOException("server side only bind to instream");
+        }
+        if (stream == null)
+            stream = new IntruderOutStream(this);
+        return (IntruderOutStream)stream;
+    }
+    public IntruderInStream getInStream() throws IOException {
+        if (!isServerSide()) {
+            throw new IOException("client side only bind to outstream");
+        }
+        if (stream == null)
+            stream = new IntruderInStream(this);
+        return (IntruderInStream)stream;
+    }
     @Override
     public void dispatchCqEvent(IbvWC ibvWC) throws IOException {
         if (IbvWC.IbvWcStatus.valueOf(ibvWC.getStatus()) != IbvWC.IbvWcStatus.IBV_WC_SUCCESS) {
@@ -59,6 +84,11 @@ public class Endpoint extends RdmaActiveEndpoint {
         wcEvents.add(ibvWC);
     }
 
+    @Override
+    public synchronized void connect(SocketAddress dst, int timeout) throws Exception {
+        this.serverHost = ((InetSocketAddress)dst).getAddress();
+        super.connect(dst, timeout);
+    }
     public  IbvWC waitEvent() throws InterruptedException {
         return wcEvents.take();
     }
@@ -76,6 +106,9 @@ public class Endpoint extends RdmaActiveEndpoint {
         super.init();
         idBuf = new IdBuf(32);
         idBuf.execRecv();
+        if (isServerSide()) {
+            connectionId = getEndpointId();
+        }
     }
 
     public void writeObject(Object obj) throws IOException {
@@ -222,7 +255,7 @@ public class Endpoint extends RdmaActiveEndpoint {
         System.out.println("registerODP: memory length: " + (maxSize.toInt() >> 10) + "KB mappedMark: " + Long.toHexString(mappedMark.toLong()));
         IbvMr mr = registerMemoryODP(baseAddress.toLong(), maxSize.toLong()).execute().free().getMr();
         heapLKey = mr.getLkey();
-        //Callbacks.addRdmaSpaceGrowMonitor(rdmaSpace, new Prefetcher(mr));
+        Callbacks.addRdmaSpaceGrowMonitor(rdmaSpace, new Prefetcher(mr));
     }
 
     public void registerHeap() throws IOException {
@@ -344,4 +377,40 @@ public class Endpoint extends RdmaActiveEndpoint {
 
     }
 
+    @Override
+    public RdmaConnParam getConnParam() {
+        if (isServerSide()) {
+            return new ConnParamConnectionId(connectionId, super.getConnParam().getUseODP());
+        } else
+            return super.getConnParam();
+    }
+
+    public static class ConnParamConnectionId extends RdmaConnParam {
+        public ByteBuffer idBuffer;
+        public ConnParamConnectionId() {
+            idBuffer = ByteBuffer.allocateDirect(32);
+            idBuffer.order(ByteOrder.LITTLE_ENDIAN);
+            private_data_addr = MemoryUtils.getAddress(idBuffer);
+            private_data_len = 32;
+        }
+        public ConnParamConnectionId(int id, boolean useODP) {
+            this();
+            setConnectId(id);
+            setUseODP(useODP);
+            idBuffer.flip();
+        }
+        public void setConnectId(int id) {
+            idBuffer.putInt(id);
+        }
+    }
+
+    @Override
+    public void handlePrivateData(RdmaCmEvent event) {
+        if (!isServerSide())
+            this.connectionId = event.getConnectId();
+    }
+
+    public int getConnectionId() {
+        return connectionId;
+    }
 }

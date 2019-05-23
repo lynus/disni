@@ -13,6 +13,7 @@ import static intruder.RdmaClassIdManager.SCALARTYPEMASK;
 
 public class Utils {
     static final int MAXSGEPERWR = 10;
+    public static char[] hexArray = "0123456789ABCDEF".toCharArray();
     static public void ensureClassInitialized(RVMClass cls) {
         if (!cls.isInitialized())
         RuntimeEntrypoints.initializeClassForDynamicLink(cls);
@@ -149,5 +150,9 @@ public class Utils {
         svcPostSend.execute().free();
         for (int i = 0; i < wrN; i++)
             ep.waitEvent();
+    }
+
+    public static void log(String msg) {
+        System.err.println(msg);
     }
 }
