@@ -1,5 +1,4 @@
-# DiSNI: Direct Storage and Networking Interface
-
-DiSNI is a Java library for direct storage and networking access from userpace. It provides an RDMA interface to access remote memory. DiSNI enables the development of Java applications for high performance RDMA networks, such as InfiniBand, iWARP, or RoCE. The RDMA API is implemented based on the Open Fabrics Enterprise Distribution (OFED) RDMA user libraries. It provides RDMA semantics including asynchronous operations, zero-copy transmission and direct data placement.
-
-# Intruder: Using RDMA to write JVM heap truely directly.
+# Intruder: Directly write to remote managed heap via RDMA technology.
+Use api similar to ObjectOutputStream to send objects, and ObjectInputStream to read objects. 
+Sender directly write objects to remote host's managed heap to achieve truely zero-copying.
+Serialization/deserialization is eliminated.
