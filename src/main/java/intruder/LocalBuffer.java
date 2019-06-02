@@ -1,13 +1,15 @@
 package intruder;
 
 import com.ibm.disni.verbs.IbvMr;
+import org.vmmagic.unboxed.Address;
 import org.vmmagic.unboxed.Offset;
 
 import java.io.IOException;
 
 public class LocalBuffer extends Buffer {
-    private int rkey, lkey, limit;
+    private int rkey, lkey, limit, pointer;
     private LocalBuffer nextBuffer;
+    private boolean consumed;
     public void register(Endpoint ep) throws IOException {
         IbvMr mr = ep.registerMemory(start.toLong(), length.toInt()).execute().free().getMr();
         rkey = mr.getRkey();
@@ -30,19 +32,61 @@ public class LocalBuffer extends Buffer {
     public void setNextBuffer(LocalBuffer buffer) {
         this.nextBuffer = buffer;
     }
-
-    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
-    public void peekBytes(int offset, int size) {
-        Utils.log("=========peek local buffer bytes==========");
-        Utils.log("buffer address:" + Long.toHexString(start.toLong()) +
-                "size: " + (length.toInt() >> 10) + " KB");
-        Utils.log("peek offset:length  " + Integer.toHexString(offset) + ":" + Integer.toHexString(size));
-        String contents = new String();
-        for (int i = 0; i < size; i++) {
-            byte v = start.loadByte(Offset.fromIntZeroExtend(offset + i));
-            contents += "0x" + hexArray[(v >> 4) & 0xf] + hexArray[v & 0x0F] + " ";
+    
+    private boolean reachLimit() {
+        if (pointer < limit)
+            return false;
+        else 
+            return true;
+    }
+    public void markConsumed() {
+        consumed = true;
+    }
+   
+    public static AddrBufferRet getNextAddr(LocalBuffer buffer) {
+        if (!buffer.reachLimit()) {
+            return buffer.bumpPointer();
         }
-        Utils.log(contents);
-        Utils.log("===========================================");
+        assert(buffer.pointer == buffer.limit);
+        while(!buffer.consumed && buffer.reachLimit()) {}
+        if (buffer.consumed) {
+            //move to next buffer
+            LocalBuffer nextBuffer = buffer.getNextBuffer();
+            return getNextAddr(nextBuffer);
+        }
+        //new data has filled into this buffer
+        return buffer.bumpPointer();
+    }
+
+    private AddrBufferRet bumpPointer() {
+        assert((pointer & 7) == 0 || (pointer & 7) ==4);
+        assert((pointer & 7) == 0 || (start.plus(pointer).loadInt() ==
+              org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE));
+        if ((pointer & 7) != 0)
+            pointer += 4;
+        int id = (int)start.plus(pointer).loadLong();
+        int size = ObjectModel.getAlignedUpSize(Factory.query(id));
+        assert(pointer + size <= limit);
+        AddrBufferRet ret = new AddrBufferRet(start.plus(pointer), this);
+        pointer += size;
+        return ret;
+    }
+
+    public void peekBytes(int offset, int size, int logBytesPerLine) {
+        Utils.peekBytes("local buffer", start, offset, size, logBytesPerLine);
+    }
+    static class AddrBufferRet {
+        private Address addr;
+        private LocalBuffer buffer;
+        public AddrBufferRet(Address a, LocalBuffer b) {
+            this.addr = a;
+            this.buffer = b;
+        }
+        public Address getAddr() {
+            return addr;
+        }
+        public LocalBuffer getLocalBuffer() {
+            return buffer;
+        }
     }
 }

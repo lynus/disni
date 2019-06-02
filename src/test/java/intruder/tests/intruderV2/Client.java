@@ -4,6 +4,8 @@ import intruder.Endpoint;
 import intruder.Factory;
 import intruder.IntruderOutStream;
 import intruder.Utils;
+import intruder.tests.TargetPrimitiveObject;
+import intruder.tests.TargetSimpleObject;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -11,15 +13,20 @@ import java.net.InetSocketAddress;
 public class Client {
     public static void main(String[] args) throws Exception{
 //        Factory.useODP();
+        Factory.registerRdmaClass(TargetPrimitiveObject.class);
+        Factory.registerRdmaClass(TargetSimpleObject.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Endpoint ep = Factory.newEndpoint();
         ep.connect(address, 10);
 //        ep.registerHeapODP();
+        TargetSimpleObject target = new TargetSimpleObject();
         IntruderOutStream outStream = ep.getOutStream();
-        for (int i = 0; i < 160; i++) {
-            outStream.writeObject(null);
-            Utils.log("success #" + i);
-        }
+//        for (int i = 0; i < 160; i++) {
+//            outStream.writeObject(target);
+//            Utils.log("success #" + i);
+//        }
+        outStream.writeObject(target);
+        outStream.flush();
 
         System.out.println("outstream connectionID: " + outStream.getConnectionId());
         System.gc();

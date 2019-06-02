@@ -63,6 +63,9 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
         } else {
             switch (request.cmd) {
             case Request.RESERVE_BUFFER_CMD:
+                buffer = inStream.getLastBuffer();
+                if (buffer != null)
+                    buffer.markConsumed();
                 buffer = inStream.getLocalBuffer();
                 try {
                     Buffer.allocate(buffer);
@@ -85,7 +88,7 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 buffer.setLimit(limit);
                 response.setNotifyBufferLimitRES(new Response.NotifyBufferLimitRES());
                 Utils.log("rpc limit: " + Integer.toHexString(limit));
-                buffer.peekBytes(limit-5, 10);
+                buffer.peekBytes(0, 64, 3);
                 break;
             case Request.RELEASE_AND_RESERVE_CMD:
                 break;

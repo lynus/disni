@@ -26,7 +26,9 @@ public class IntruderOutStream extends Stream{
     }
 
     public void writeObject(Object object) throws IOException {
-          while(!fill((1 << 16) + (1 << 11) + (1<<8))) {
+        if (Factory.query(object.getClass()) == -1)
+            throw new IOException("type not registered: " + object.getClass().getCanonicalName());
+          while(!fill(object)){
               Utils.log("writeObject retry");
           }
     }
@@ -49,6 +51,23 @@ public class IntruderOutStream extends Stream{
             return false;
         }
         ringBuffer.fillData(size);
+        return true;
+    }
+
+    private boolean fill(Object object) throws IOException {
+        int size = ObjectModel.getMaximumAlignedSize(object);
+        int reserved = ringBuffer.reserve(size);
+        if (reserved == -1) {
+            ringBuffer.flush(false);
+            return false;
+        }
+        if (reserved > remoteBuffer.freeSpace()) {
+            Utils.log("remotebuffer freespace: "+remoteBuffer.freeSpace());
+            Utils.log("ring buffer reserve: "+ reserved);
+            ringBuffer.flush(true);
+            return false;
+        }
+	    ringBuffer.fillObject(object);
         return true;
     }
     @Override
@@ -86,8 +105,24 @@ public class IntruderOutStream extends Stream{
             }
             head = (head + size) % length;
 //            peekBytes(head - 5, 10);
-            assert(tailToHead(head) <= length);
+            assert(tailToHead(head) < length);
         }
+	private void fillObject(Object object) {
+	    //找到满足对齐要求的起始地址
+	    //跳过header，复制数据
+	    //改写头部数据:将TIB指针改为类注册ID;status的部分留给接收端处理
+	    //填充padding
+	    assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
+	    int start = ObjectModel.alignObjectAllocation(head);
+	    if (head != start)
+            ObjectModel.fillGap(addr.plus(head));
+	    ObjectModel.copyObject(object, addr.plus(start));
+	    ObjectModel.setRegisteredID(object, addr.plus(start));
+	    head = start + ObjectModel.getAlignedUpSize(object);
+	    assert(tailToHead(head) < length);
+	    peekBytes(0, 64);
+	    Utils.log("ringbuffer head: " + head);
+	}
 
         public void flush(boolean allocRemoteBuffer) throws IOException{
             if (head == tail) {
@@ -114,6 +149,7 @@ public class IntruderOutStream extends Stream{
             return head + length - tail;
         }
         private void reset() {
+	        Utils.zeroMemory(addr, length);
             tail = head = 0;
         }
 
@@ -125,16 +161,7 @@ public class IntruderOutStream extends Stream{
         }
 
         public void peekBytes(int offset, int size) {
-            Utils.log("=========peek ring buffer bytes==========");
-            Utils.log("tail:" + tail + " head: " + head);
-            Utils.log("peek offset:length  " + Integer.toHexString(offset) + ":" + Integer.toHexString(size));
-            String contents = new String();
-            for (int i = 0; i < size; i++) {
-                byte v = addr.loadByte(Offset.fromIntZeroExtend(offset + i));
-                contents += "0x" + Utils.hexArray[(v >> 4) & 0xf] + Utils.hexArray[v & 0x0F] + " ";
-            }
-            Utils.log(contents);
-            Utils.log("===========================================");
+            Utils.peekBytes("ring buffer", addr, offset, size, 3);
         }
     }
 

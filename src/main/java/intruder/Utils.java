@@ -3,8 +3,12 @@ package intruder;
 import com.ibm.disni.verbs.*;
 import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
+import org.jikesrvm.runtime.Memory;
 import org.jikesrvm.runtime.RuntimeEntrypoints;
 import org.vmmagic.unboxed.Address;
+import org.vmmagic.unboxed.Extent;
+import org.jikesrvm.runtime.Magic;
+import org.vmmagic.unboxed.Offset;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -154,5 +158,30 @@ public class Utils {
 
     public static void log(String msg) {
         System.err.println(msg);
+    }
+    public static void memcopyAligned4(Address src, Address dst, int size) {
+        Memory.aligned32Copy(dst, src, size);
+    }
+    public static void zeroMemory(Address addr, int size) {
+        //use non-temporal store
+        Memory.zero(false, addr, Extent.fromIntZeroExtend(size));
+    }
+    public static void peekBytes(String msg, Address start, int offset, int size, int logBytesPerLine) {
+        int bytesPerLine = 1 << logBytesPerLine;
+        offset = (offset >> logBytesPerLine) << logBytesPerLine;
+        size = ((size + bytesPerLine - 1) >> logBytesPerLine) << logBytesPerLine ;
+        Utils.log("=========peek " + msg + " bytes==========");
+        Utils.log("buffer address: 0x" + Long.toHexString(start.toLong()));
+        Utils.log("peek offset:length  0x" + Integer.toHexString(offset) + ":" + Integer.toHexString(size));
+        String contents = "";
+        for (int i = 0; i < size; i++) {
+            byte v = start.loadByte(Offset.fromIntSignExtend(offset + i));
+            contents += "0x" + hexArray[(v >> 4) & 0xf] + hexArray[v & 0xf] + " ";
+            if (i % bytesPerLine == bytesPerLine -1) {
+                Utils.log(contents);
+                contents = "";
+            }
+        }
+        Utils.log("===========================================");
     }
 }
