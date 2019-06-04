@@ -22,8 +22,15 @@ public class Server {
 //        ep.registerHeapODP();
         IntruderInStream instream = ep.getInStream();
         Utils.log("instream connectID: " + instream.getConnectionId());
-	TargetSimpleObject object = (TargetSimpleObject)instream.readObject();
+        TargetSimpleObject object = (TargetSimpleObject)instream.readObject();
         Utils.log(object.toString());
+        object = (TargetSimpleObject)instream.readObject();
+        Utils.log(object.toString());
+
+        int [] array = (int[])instream.readObject();
+        for (int i: array) {
+            Utils.log(" "+i);
+        }
         System.in.read();
     }
 }

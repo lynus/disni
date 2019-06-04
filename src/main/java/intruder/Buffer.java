@@ -31,7 +31,7 @@ public class Buffer {
             throw new IOException("region returned zero.");
         buffer.start = region;
         buffer.length = Extent.fromIntZeroExtend(MIN_ALIGN);
-        Utils.log("get buffer start: "+region.toLong()+" log size: "+buffer.length.toInt());
+        Utils.log("get buffer start: "+region.toLong()+" log size:(k) "+ (buffer.length.toInt() >> 10));
         return buffer;
     }
 

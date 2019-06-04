@@ -65,7 +65,7 @@ public class LocalBuffer extends Buffer {
         if ((pointer & 7) != 0)
             pointer += 4;
         int id = (int)start.plus(pointer).loadLong();
-        int size = ObjectModel.getAlignedUpSize(Factory.query(id));
+        int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByID(id), start.plus(pointer));
         assert(pointer + size <= limit);
         AddrBufferRet ret = new AddrBufferRet(start.plus(pointer), this);
         pointer += size;

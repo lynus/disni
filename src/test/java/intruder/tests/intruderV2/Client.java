@@ -7,6 +7,7 @@ import intruder.Utils;
 import intruder.tests.TargetPrimitiveObject;
 import intruder.tests.TargetSimpleObject;
 
+import java.lang.annotation.Target;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
@@ -26,6 +27,14 @@ public class Client {
 //            Utils.log("success #" + i);
 //        }
         outStream.writeObject(target);
+        target.d = 'y';
+        outStream.writeObject(target);
+        outStream.flush();
+        int array[] = new int[5];
+        for (int i = 0; i < array.length; i++) {
+            array[i] = i;
+        }
+        outStream.writeObject(array);
         outStream.flush();
 
         System.out.println("outstream connectionID: " + outStream.getConnectionId());

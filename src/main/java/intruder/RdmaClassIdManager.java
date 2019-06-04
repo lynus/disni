@@ -1,5 +1,6 @@
 package intruder;
 
+import org.jikesrvm.classloader.RVMArray;
 import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
 import org.vmmagic.pragma.Inline;
@@ -10,11 +11,33 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RdmaClassIdManager{
     private ConcurrentHashMap<RVMType, Integer> classToIdMap = new ConcurrentHashMap<RVMType, Integer>();
     private ConcurrentHashMap<Integer, RVMType> idToClassMap = new ConcurrentHashMap<Integer, RVMType>();
-    private AtomicInteger counter = new AtomicInteger();
+    private AtomicInteger counter;
     static public final int ARRAYTYPEMASK = 1 << 31;
     static public final int SCALARTYPEMASK = ~ARRAYTYPEMASK;
     static public final int ARRAYTYPE = 1 << 31;
     static public final int NONARRAYTYPE = 0;
+    public RdmaClassIdManager () {
+        classToIdMap.put(RVMType.BooleanType, Integer.valueOf(0));
+        classToIdMap.put(RVMType.ByteType, Integer.valueOf(1));
+        classToIdMap.put(RVMType.ShortType, Integer.valueOf(2));
+        classToIdMap.put(RVMType.IntType, Integer.valueOf(3));
+        classToIdMap.put(RVMType.LongType, Integer.valueOf(4));
+        classToIdMap.put(RVMType.FloatType, Integer.valueOf(5));
+        classToIdMap.put(RVMType.DoubleType, Integer.valueOf(6));
+        classToIdMap.put(RVMType.CharType, Integer.valueOf(7));
+        classToIdMap.put(RVMType.JavaLangStringType, Integer.valueOf(8));
+        counter = new AtomicInteger(9);
+
+        idToClassMap.put(Integer.valueOf(0), RVMType.BooleanType);
+        idToClassMap.put(Integer.valueOf(1), RVMType.ByteType);
+        idToClassMap.put(Integer.valueOf(2), RVMType.ShortType);
+        idToClassMap.put(Integer.valueOf(3), RVMType.IntType);
+        idToClassMap.put(Integer.valueOf(4), RVMType.LongType);
+        idToClassMap.put(Integer.valueOf(5), RVMType.FloatType);
+        idToClassMap.put(Integer.valueOf(6), RVMType.DoubleType);
+        idToClassMap.put(Integer.valueOf(7), RVMType.CharType);
+        idToClassMap.put(Integer.valueOf(8), RVMType.JavaLangStringType);
+    }
     public int registerClass(Class cls) {
        Integer ret;
        String className = cls.getCanonicalName();

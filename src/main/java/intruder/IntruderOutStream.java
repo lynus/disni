@@ -120,8 +120,6 @@ public class IntruderOutStream extends Stream{
 	    ObjectModel.setRegisteredID(object, addr.plus(start));
 	    head = start + ObjectModel.getAlignedUpSize(object);
 	    assert(tailToHead(head) < length);
-	    peekBytes(0, 64);
-	    Utils.log("ringbuffer head: " + head);
 	}
 
         public void flush(boolean allocRemoteBuffer) throws IOException{

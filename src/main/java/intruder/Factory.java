@@ -47,6 +47,7 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
         return type.getClassForType();
     }
     static public int query(Class cls) {
+        cls = ObjectModel.getInnerMostEleType(cls);
         return idManager.query(cls);
     }
 

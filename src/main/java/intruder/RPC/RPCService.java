@@ -87,8 +87,8 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 }
                 buffer.setLimit(limit);
                 response.setNotifyBufferLimitRES(new Response.NotifyBufferLimitRES());
-                Utils.log("rpc limit: " + Integer.toHexString(limit));
-                buffer.peekBytes(0, 64, 3);
+                Utils.log("rpc limit: " + limit);
+                //buffer.peekBytes(0, 64, 3);
                 break;
             case Request.RELEASE_AND_RESERVE_CMD:
                 break;
