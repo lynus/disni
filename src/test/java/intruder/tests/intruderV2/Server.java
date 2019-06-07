@@ -1,15 +1,13 @@
 package intruder.tests.intruderV2;
 
-import intruder.Endpoint;
-import intruder.Factory;
-import intruder.IntruderInStream;
-import intruder.Listener;
+import intruder.*;
 import intruder.tests.TargetPrimitiveObject;
 import intruder.tests.TargetSimpleObject;
-import intruder.Utils;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class Server {
     public static void main(String []args) throws Exception {
@@ -27,10 +25,37 @@ public class Server {
         object = (TargetSimpleObject)instream.readObject();
         Utils.log(object.toString());
 
-        int [] array = (int[])instream.readObject();
-        for (int i: array) {
-            Utils.log(" "+i);
+        long [][] arrays = new long[128][];
+        for (int i = 0; i < arrays.length; i++) {
+            arrays[i] = (long[])instream.readObject();
+            Utils.log("done reading array #" + i);
+        }
+        int i = 0;
+        for (long[] array : arrays) {
+            boolean pass = checkRandomLongArray(array);
+            Utils.log("check received array #" + i + "pass?: " + pass);
+            i++;
         }
         System.in.read();
     }
+
+    private static boolean checkRandomLongArray(long[] array) {
+        MessageDigest md = null;
+        try {
+            md = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException ex) {}
+        for (int i = 1; i < array.length; i++) {
+            long v = array[i];
+            for (int j = 0; j < 8; j++) {
+//                byte tmp = (byte) (v & 0xff);
+                md.update((byte)v);
+                v = v >>> 8;
+            }
+        }
+        byte[] digest = md.digest();
+        long[] v = new long[1];
+        Utils.memcopyAligned4(ObjectModel.getArrayAddress(digest), ObjectModel.getArrayAddress(v), 8);
+        return v[0] == array[0];
+    }
+
 }

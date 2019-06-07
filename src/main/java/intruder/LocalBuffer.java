@@ -52,6 +52,8 @@ public class LocalBuffer extends Buffer {
         if (buffer.consumed) {
             //move to next buffer
             LocalBuffer nextBuffer = buffer.getNextBuffer();
+            while (nextBuffer == null)
+                nextBuffer = buffer.getNextBuffer();
             return getNextAddr(nextBuffer);
         }
         //new data has filled into this buffer

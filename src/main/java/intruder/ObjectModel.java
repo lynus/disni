@@ -125,6 +125,9 @@ public class ObjectModel {
         if (dimension == 0)
             return cls;
         return getNDimensionArrayType(getType(cls), dimension).getClassForType();
+    }
 
+    public static Address getArrayAddress(Object object) {
+        return getObjectHeaderAddress(object).plus(ELEMENT_NUM_OFFSET + 8);
     }
 }
