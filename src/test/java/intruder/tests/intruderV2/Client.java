@@ -15,6 +15,7 @@ public class Client {
 //        Factory.useODP();
         Factory.registerRdmaClass(TargetPrimitiveObject.class);
         Factory.registerRdmaClass(TargetSimpleObject.class);
+        Factory.registerRdmaClass(Integer.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Endpoint ep = Factory.newEndpoint();
         ep.connect(address, 10);
@@ -25,8 +26,11 @@ public class Client {
         target.d = 'y';
         outStream.writeObject(target);
         outStream.flush();
-        for (int i = 0; i < 512; i++) {
-            long[] array = generateRandomLongArray(4096);
+        Integer N = 1024;
+        outStream.writeObject(N);
+        Random rand = new Random();
+        for (int i = 0; i < N; i++) {
+            long[] array = generateRandomLongArray(1 + rand.nextInt(4097));
             Utils.log("#" + i + " digest: " + Long.toHexString(array[0]));
             outStream.writeObject(array);
         }

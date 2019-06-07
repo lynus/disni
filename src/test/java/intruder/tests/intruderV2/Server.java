@@ -14,6 +14,7 @@ public class Server {
 //        Factory.useODP();
         Factory.registerRdmaClass(TargetPrimitiveObject.class);
         Factory.registerRdmaClass(TargetSimpleObject.class);
+        Factory.registerRdmaClass(Integer.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Listener listener = Factory.newListener(address);
         Endpoint ep = listener.accept();
@@ -25,7 +26,8 @@ public class Server {
         object = (TargetSimpleObject)instream.readObject();
         Utils.log(object.toString());
 
-        long [][] arrays = new long[128][];
+        Integer N = (Integer)instream.readObject();
+        long [][] arrays = new long[N][];
         for (int i = 0; i < arrays.length; i++) {
             arrays[i] = (long[])instream.readObject();
             Utils.log("done reading array #" + i);
