@@ -40,12 +40,15 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
         return idManager.registerClass(cls);
     }
 
+    //dimension field in the id is strip before call this method.
     static public Class query(int id) {
         RVMType type = idManager.query(id);
         if (type == null)
             return null;
         return type.getClassForType();
     }
+
+    //argument cls can be both array or scalar class
     static public int query(Class cls) {
         cls = ObjectModel.getInnerMostEleType(cls);
         return idManager.query(cls);
