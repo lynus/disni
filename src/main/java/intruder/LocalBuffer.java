@@ -66,11 +66,15 @@ public class LocalBuffer extends Buffer {
               org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE));
         if ((pointer & 7) != 0)
             pointer += 4;
-        int id = (int)start.plus(pointer).loadLong();
-        int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByID(id), start.plus(pointer));
-        assert(pointer + size <= limit);
         AddrBufferRet ret = new AddrBufferRet(start.plus(pointer), this);
-        pointer += size;
+        if (start.plus(pointer).loadLong() == -1L) {
+           pointer += 8;
+        } else {
+            int id = (int) start.plus(pointer).loadLong();
+            int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByID(id), start.plus(pointer));
+            pointer += size;
+        }
+        assert(pointer <= limit);
         return ret;
     }
 

@@ -8,6 +8,8 @@ import org.vmmagic.unboxed.Offset;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class IntruderOutStream extends Stream{
     private RemoteBuffer remoteBuffer;
@@ -28,9 +30,20 @@ public class IntruderOutStream extends Stream{
     public void writeObject(Object object) throws IOException {
         if (Factory.query(object.getClass()) == -1)
             throw new IOException("type not registered: " + object.getClass().getCanonicalName());
-          while(!fill(object)){
-              Utils.log("writeObject retry");
-          }
+//        fill(object);
+        Queue<Object> queue = new LinkedList<Object>();
+        queue.add(object);
+        while (queue.size() != 0) {
+            object = queue.remove();
+            if (object == null) {
+                fillNull();
+                continue;
+            }
+            Object[] refs = ObjectModel.getAllReferences(object);
+            for (Object o : refs)
+                queue.add(o);
+            fill(object);
+        }
     }
 
     public void flush() throws IOException {
@@ -54,21 +67,40 @@ public class IntruderOutStream extends Stream{
         return true;
     }
 
-    private boolean fill(Object object) throws IOException {
+    private Address fill(Object object) throws IOException {
         int size = ObjectModel.getMaximumAlignedSize(object);
-        int reserved = ringBuffer.reserve(size);
-        if (reserved == -1) {
-            ringBuffer.flush(false);
-            return false;
-        }
-        if (reserved > remoteBuffer.freeSpace()) {
-            Utils.log("remotebuffer freespace: "+remoteBuffer.freeSpace());
-            Utils.log("ring buffer reserve: "+ reserved);
-            ringBuffer.flush(true);
-            return false;
+        while (true) {
+            int reserved = ringBuffer.reserve(size);
+            if (reserved == -1) {
+                ringBuffer.flush(false);
+                continue;
+            }
+            if (reserved > remoteBuffer.freeSpace()) {
+                Utils.log("remotebuffer freespace: " + remoteBuffer.freeSpace());
+                Utils.log("ring buffer reserve: " + reserved);
+                ringBuffer.flush(true);
+                continue;
+            }
+            break;
         }
 	    ringBuffer.fillObject(object);
-        return true;
+        return Address.zero();
+    }
+    private void fillNull() throws IOException {
+        int size = 8;
+        while (true) {
+            int reserved = ringBuffer.reserve(size);
+            if (reserved == -1) {
+                ringBuffer.flush(false);
+                continue;
+            }
+            if (reserved > remoteBuffer.freeSpace()) {
+                ringBuffer.flush(true);
+                continue;
+            }
+            break;
+        }
+        ringBuffer.fillValue(-1L);
     }
     @Override
     public void close() {
@@ -99,6 +131,16 @@ public class IntruderOutStream extends Stream{
             return tailToHead() + size;
         }
 
+        public void fillValue(long v) {
+            assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
+            int start = ObjectModel.alignObjectAllocation(head);
+            if (head != start)
+                ObjectModel.fillGap(addr.plus(head));
+            addr.plus(head).store(v);
+            head = start + 8;
+            assert(tailToHead(head) < length);
+        }
+
         public void fillData(int size) {
             for (int i = 0; i < size; i++) {
                 addr.store((byte)(i & 0xff), Offset.fromIntZeroExtend(i).plus(head));
@@ -107,6 +149,7 @@ public class IntruderOutStream extends Stream{
 //            peekBytes(head - 5, 10);
             assert(tailToHead(head) < length);
         }
+    //copy all primitive slots and returns all reference slots.
 	private void fillObject(Object object) {
 	    //找到满足对齐要求的起始地址
 	    //跳过header，复制数据

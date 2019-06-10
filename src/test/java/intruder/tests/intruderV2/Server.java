@@ -2,6 +2,7 @@ package intruder.tests.intruderV2;
 
 import intruder.*;
 import intruder.tests.TargetPrimitiveObject;
+import intruder.tests.TargetRefObject;
 import intruder.tests.TargetSimpleObject;
 
 import java.net.InetAddress;
@@ -15,6 +16,7 @@ public class Server {
         Factory.registerRdmaClass(TargetPrimitiveObject.class);
         Factory.registerRdmaClass(TargetSimpleObject.class);
         Factory.registerRdmaClass(Integer.class);
+        Factory.registerRdmaClass(TargetRefObject.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Listener listener = Factory.newListener(address);
         Endpoint ep = listener.accept();
@@ -38,6 +40,12 @@ public class Server {
             Utils.log("check received array #" + i + "pass?: " + pass);
             i++;
         }
+
+        TargetRefObject refObject = (TargetRefObject)instream.readObject();
+        TargetPrimitiveObject primitiveObject1 = (TargetPrimitiveObject)instream.readObject();
+        TargetPrimitiveObject primitiveObject2 = (TargetPrimitiveObject)instream.readObject();
+        assert(primitiveObject1 == null);
+        Utils.log(primitiveObject2.toString());
         System.in.read();
     }
 

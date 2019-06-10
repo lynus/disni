@@ -12,6 +12,7 @@ import org.vmmagic.pragma.Inline;
 import org.vmmagic.unboxed.Address;
 import org.vmmagic.unboxed.ObjectReference;
 
+import static org.jikesrvm.classloader.RVMType.REFARRAY_OFFSET_ARRAY;
 import static org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE;
 
 public class ObjectModel {
@@ -74,6 +75,8 @@ public class ObjectModel {
     }
     public static void setRegisteredID(Object object, Address start) {
         int id = Factory.query(object.getClass());
+        if (id == -1)
+            Utils.log("setRegister class: " + object.getClass().getCanonicalName());
         assert(id != -1);
         int dimension = getDimension(object);
         if (dimension > 0)
@@ -85,6 +88,8 @@ public class ObjectModel {
     }
 
     public static Object initializeHeader(Address ptr) {
+        if (ptr.loadLong() == -1L)
+            return null;
         int id = (int)ptr.loadLong();
         Class cls  = getClassByID(id);
         RVMType type = getType(cls);
@@ -129,5 +134,30 @@ public class ObjectModel {
 
     public static Address getArrayAddress(Object object) {
         return getObjectHeaderAddress(object).plus(ELEMENT_NUM_OFFSET + 8);
+    }
+
+    //see SpecializedScanMethod.fallback()
+    public static Object[] getAllReferences(Object object) {
+        Address base = Magic.objectAsAddress(object);
+        RVMType type = getType(object.getClass());
+        Object[] ret;
+        int[] offsets = type.getReferenceOffsets();
+        if (offsets == REFARRAY_OFFSET_ARRAY) {
+            ret = new Object[getArrayLength(object)];
+            for (int i = 0; i < getArrayLength(object); i++) {
+                Object obj = base.plus(i << 8).loadObjectReference().toObject();
+                ret[i] = obj;
+            }
+        } else {
+            ret = new Object[offsets.length];
+            for (int i = 0; i < offsets.length; i++) {
+                ret[i] = base.plus(offsets[i]).loadObjectReference().toObject();
+            }
+        }
+        return ret;
+    }
+
+    private static int getArrayLength(Object object) {
+        return (int)getObjectHeaderAddress(object).plus(ELEMENT_NUM_OFFSET).loadLong();
     }
 }

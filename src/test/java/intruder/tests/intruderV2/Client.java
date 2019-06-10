@@ -2,6 +2,7 @@ package intruder.tests.intruderV2;
 
 import intruder.*;
 import intruder.tests.TargetPrimitiveObject;
+import intruder.tests.TargetRefObject;
 import intruder.tests.TargetSimpleObject;
 
 import java.net.InetAddress;
@@ -16,6 +17,7 @@ public class Client {
         Factory.registerRdmaClass(TargetPrimitiveObject.class);
         Factory.registerRdmaClass(TargetSimpleObject.class);
         Factory.registerRdmaClass(Integer.class);
+        Factory.registerRdmaClass(TargetRefObject.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Endpoint ep = Factory.newEndpoint();
         ep.connect(address, 10);
@@ -34,6 +36,13 @@ public class Client {
             Utils.log("#" + i + " digest: " + Long.toHexString(array[0]));
             outStream.writeObject(array);
         }
+        outStream.flush();
+
+        TargetRefObject refObject = new TargetRefObject();
+        refObject.ref1 = null;
+        refObject.ref2 = new TargetPrimitiveObject();
+        refObject.ref2.setA(555);
+        outStream.writeObject(refObject);
         outStream.flush();
 
         System.out.println("outstream connectionID: " + outStream.getConnectionId());
