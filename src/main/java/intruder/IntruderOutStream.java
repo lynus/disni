@@ -7,6 +7,7 @@ import org.vmmagic.unboxed.Address;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -38,8 +39,9 @@ public class IntruderOutStream extends Stream{
                 continue;
             }
             Object[] refs = ObjectModel.getAllReferences(object);
-            for (Object o : refs)
-                queue.add(o);
+//            for (Object o : refs)
+//                queue.add(o);
+            queue.addAll(Arrays.asList(refs));
             fill(object);
         }
     }
@@ -84,7 +86,7 @@ public class IntruderOutStream extends Stream{
             }
             break;
         }
-        ringBuffer.fillValue(-1L);
+        ringBuffer.fillNull();
     }
     @Override
     public void close() {
@@ -115,12 +117,12 @@ public class IntruderOutStream extends Stream{
             return tailToHead() + size;
         }
 
-        public void fillValue(long v) {
+        public void fillNull() {
             assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
             int start = ObjectModel.alignObjectAllocation(head);
             if (head != start)
                 ObjectModel.fillGap(addr.plus(head));
-            addr.plus(head).store(v);
+            HeaderEncoding.getHeaderEncoding(addr.plus(start)).setNullType();
             head = start + 8;
             assert(tailToHead(head) < length);
         }

@@ -23,7 +23,7 @@ public class IntruderInStream extends Stream {
         LocalBuffer.AddrBufferRet ret = LocalBuffer.getNextAddr(currentBuffer);
         currentBuffer = ret.getLocalBuffer();
         Address header = ret.getAddr();
-        Utils.log("get header address: 0x" + Long.toHexString(header.toLong()));
+//        Utils.log("get header address: 0x" + Long.toHexString(header.toLong()));
         /*设定header
           VM 部分 TIB status（lock，hash status)
           GC 部分

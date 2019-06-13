@@ -33,7 +33,7 @@ public class Client {
         Random rand = new Random();
         for (int i = 0; i < N; i++) {
             long[] array = generateRandomLongArray(1 + rand.nextInt(4097));
-            Utils.log("#" + i + " digest: " + Long.toHexString(array[0]));
+//            Utils.log("#" + i + " digest: " + Long.toHexString(array[0]));
             outStream.writeObject(array);
         }
         outStream.flush();

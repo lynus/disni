@@ -2,7 +2,6 @@ package intruder;
 
 import com.ibm.disni.verbs.IbvMr;
 import org.vmmagic.unboxed.Address;
-import org.vmmagic.unboxed.Offset;
 
 import java.io.IOException;
 
@@ -67,11 +66,10 @@ public class LocalBuffer extends Buffer {
         if ((pointer & 7) != 0)
             pointer += 4;
         AddrBufferRet ret = new AddrBufferRet(start.plus(pointer), this);
-        if (start.plus(pointer).loadLong() == -1L) {
+        if (HeaderEncoding.getHeaderEncoding(start.plus(pointer)).isNullType()) {
            pointer += 8;
         } else {
-            int id = (int) start.plus(pointer).loadLong();
-            int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByID(id), start.plus(pointer));
+            int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByHeader(start.plus(pointer)), start.plus(pointer));
             pointer += size;
         }
         assert(pointer <= limit);

@@ -80,19 +80,16 @@ public class ObjectModel {
             Utils.log("setRegister class: " + object.getClass().getCanonicalName());
         assert(id != -1);
         int dimension = getDimension(object);
-        if (dimension > 0)
-            id = (dimension << 24) | id;
-        start.store((long)id);
+        HeaderEncoding.getHeaderEncoding(start).setObjctType(id, dimension);
     }
     public static void fillGap(Address addr) {
         addr.store(ALIGNMENT_VALUE);
     }
 
     public static Object initializeHeader(Address ptr) {
-        if (ptr.loadLong() == -1L)
+        if (HeaderEncoding.getHeaderEncoding(ptr).isNullType())
             return null;
-        int id = (int)ptr.loadLong();
-        Class cls  = getClassByID(id);
+        Class cls = getClassByHeader(ptr);
         RVMType type = getType(cls);
         TIB tib;
         if (type.isClassType()) {
@@ -129,9 +126,10 @@ public class ObjectModel {
         return array.getInnermostElementType().getClassForType();
     }
 
-    public static Class getClassByID(int id) {
-        int dimension = id >>> 24;
-        id = id & ((1 << 24) - 1);
+    public static Class getClassByHeader(Address header) {
+        HeaderEncoding he = new HeaderEncoding(header);
+        int id = he.getID();
+        int dimension = he.getDimension();
         Class cls = Factory.query(id);
         assert(cls != null);
         if (dimension == 0)
