@@ -4,7 +4,6 @@ import com.ibm.disni.util.MemoryUtils;
 import com.ibm.disni.verbs.IbvMr;
 import intruder.RPC.RPCClient;
 import org.vmmagic.unboxed.Address;
-import org.vmmagic.unboxed.Offset;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,7 +29,6 @@ public class IntruderOutStream extends Stream{
     public void writeObject(Object object) throws IOException {
         if (Factory.query(object.getClass()) == -1)
             throw new IOException("type not registered: " + object.getClass().getCanonicalName());
-//        fill(object);
         Queue<Object> queue = new LinkedList<Object>();
         queue.add(object);
         while (queue.size() != 0) {
@@ -50,26 +48,12 @@ public class IntruderOutStream extends Stream{
         ringBuffer.flush(false);
     }
 
-    private boolean fill(int size) throws IOException{
-        if (ringBuffer.reserve(size) == -1) {
-            //ringBuffer is overflow, flush ring buffer and try again
-            ringBuffer.flush(false);
-            return false;
-        }
-        if (ringBuffer.reserve(size) > remoteBuffer.freeSpace()) {
-            //remote buffer is overflow, flush ring buffer, allocate new remote buffer and try again
-            Utils.log("remotebuffer freespace: "+remoteBuffer.freeSpace());
-            Utils.log("ring buffer reserve: "+ringBuffer.reserve(size));
-            ringBuffer.flush(true);
-            return false;
-        }
-        ringBuffer.fillData(size);
-        return true;
-    }
 
     private Address fill(Object object) throws IOException {
         int size = ObjectModel.getMaximumAlignedSize(object);
         while (true) {
+            //TODO: It's commone case that neither ringBuffer and remoteBuffer can reserve
+            //the object. Consolidate two rpc calls into one.
             int reserved = ringBuffer.reserve(size);
             if (reserved == -1) {
                 ringBuffer.flush(false);
@@ -141,14 +125,6 @@ public class IntruderOutStream extends Stream{
             assert(tailToHead(head) < length);
         }
 
-        public void fillData(int size) {
-            for (int i = 0; i < size; i++) {
-                addr.store((byte)(i & 0xff), Offset.fromIntZeroExtend(i).plus(head));
-            }
-            head = (head + size) % length;
-//            peekBytes(head - 5, 10);
-            assert(tailToHead(head) < length);
-        }
     //copy all primitive slots and returns all reference slots.
 	private void fillObject(Object object) {
 	    //找到满足对齐要求的起始地址

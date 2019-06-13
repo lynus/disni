@@ -10,6 +10,7 @@ import org.jikesrvm.runtime.Memory;
 import org.mmtk.utility.Constants;
 import org.vmmagic.pragma.Inline;
 import org.vmmagic.unboxed.Address;
+import org.vmmagic.unboxed.AddressArray;
 import org.vmmagic.unboxed.ObjectReference;
 
 import static org.jikesrvm.classloader.RVMType.REFARRAY_OFFSET_ARRAY;
@@ -26,7 +27,7 @@ public class ObjectModel {
     public final static int MIN_ALIGNMENT = Constants.MIN_ALIGNMENT;
 
     @Inline
-    private static RVMType getType(Class cls) {
+    public static RVMType getType(Class cls) {
         return java.lang.JikesRVMSupport.getTypeForClass(cls);
     }
 
@@ -112,6 +113,11 @@ public class ObjectModel {
         for (int i = 0; i < dimension - 1; i++) {
             ret = ret.getArrayTypeForElementType();
         }
+        if (!ret.isInitialized()) {
+            ret.resolve();
+            ret.instantiate();
+            ret.initialize();
+        }
         return ret;
     }
 
@@ -127,6 +133,7 @@ public class ObjectModel {
         int dimension = id >>> 24;
         id = id & ((1 << 24) - 1);
         Class cls = Factory.query(id);
+        assert(cls != null);
         if (dimension == 0)
             return cls;
         return getNDimensionArrayType(getType(cls), dimension).getClassForType();
@@ -145,13 +152,32 @@ public class ObjectModel {
         if (offsets == REFARRAY_OFFSET_ARRAY) {
             ret = new Object[getArrayLength(object)];
             for (int i = 0; i < getArrayLength(object); i++) {
-                Object obj = base.plus(i << 8).loadObjectReference().toObject();
+                Object obj = base.plus(i << 3).loadObjectReference().toObject();
                 ret[i] = obj;
             }
         } else {
             ret = new Object[offsets.length];
             for (int i = 0; i < offsets.length; i++) {
                 ret[i] = base.plus(offsets[i]).loadObjectReference().toObject();
+            }
+        }
+        return ret;
+    }
+
+    public static AddressArray getAllReferenceSlots(Object object) {
+        Address base = Magic.objectAsAddress(object);
+        RVMType type = getType(object.getClass());
+        AddressArray ret;
+        int[] offsets = type.getReferenceOffsets();
+        if (offsets == REFARRAY_OFFSET_ARRAY) {
+            ret = AddressArray.create(getArrayLength(object));
+            for (int i = 0; i < getArrayLength(object); i++) {
+                ret.set(i, base.plus(i << 3));
+            }
+        } else {
+            ret = AddressArray.create(offsets.length);
+            for (int i = 0; i < offsets.length; i++) {
+                ret.set(i, base.plus(offsets[i]));
             }
         }
         return ret;

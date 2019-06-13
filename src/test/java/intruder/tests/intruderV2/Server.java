@@ -4,6 +4,7 @@ import intruder.*;
 import intruder.tests.TargetPrimitiveObject;
 import intruder.tests.TargetRefObject;
 import intruder.tests.TargetSimpleObject;
+import org.vmmagic.unboxed.AddressArray;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -32,20 +33,21 @@ public class Server {
         long [][] arrays = new long[N][];
         for (int i = 0; i < arrays.length; i++) {
             arrays[i] = (long[])instream.readObject();
-            Utils.log("done reading array #" + i);
         }
         int i = 0;
         for (long[] array : arrays) {
             boolean pass = checkRandomLongArray(array);
-            Utils.log("check received array #" + i + "pass?: " + pass);
+            if (!pass)
+                Utils.log("check received array #" + i + " failed!");
             i++;
         }
+        Utils.log("done checking received arrays");
 
-        TargetRefObject refObject = (TargetRefObject)instream.readObject();
-        TargetPrimitiveObject primitiveObject1 = (TargetPrimitiveObject)instream.readObject();
-        TargetPrimitiveObject primitiveObject2 = (TargetPrimitiveObject)instream.readObject();
-        assert(primitiveObject1 == null);
-        Utils.log(primitiveObject2.toString());
+        TargetRefObject[] array = (TargetRefObject[])instream.readObject();
+        Utils.log("array length: " + array.length);
+        for (TargetRefObject obj : array) {
+            Utils.log(obj.toString());
+        }
         System.in.read();
     }
 

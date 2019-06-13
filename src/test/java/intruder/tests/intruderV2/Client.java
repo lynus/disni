@@ -38,13 +38,14 @@ public class Client {
         }
         outStream.flush();
 
-        TargetRefObject refObject = new TargetRefObject();
-        refObject.ref1 = null;
-        refObject.ref2 = new TargetPrimitiveObject();
-        refObject.ref2.setA(555);
-        outStream.writeObject(refObject);
+        TargetRefObject[] array = new TargetRefObject[8];
+        TargetRefObject ele = new TargetRefObject();
+        ele.ref2 = new TargetPrimitiveObject();
+        for (int i = 0; i < array.length; i++) {
+            array[i] = ele;
+        }
+        outStream.writeObject(array);
         outStream.flush();
-
         System.out.println("outstream connectionID: " + outStream.getConnectionId());
         System.gc();
         System.in.read();
