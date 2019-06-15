@@ -7,7 +7,7 @@ import org.vmmagic.unboxed.Address;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -15,6 +15,8 @@ public class IntruderOutStream extends Stream{
     private RemoteBuffer remoteBuffer;
     private RPCClient rpcClient;
     private RingBuffer ringBuffer;
+    private HashMap<Object, Integer> obj2HandleMap = new HashMap<Object, Integer>();
+    private int writtenItem = 0;
     public IntruderOutStream(Endpoint ep) throws IOException{
         super(ep);
         rpcClient = new RPCClient(connectionId);
@@ -30,7 +32,14 @@ public class IntruderOutStream extends Stream{
     public void writeObject(Object object) throws IOException {
         if (Factory.query(object.getClass()) == -1)
             throw new IOException("type not registered: " + object.getClass().getCanonicalName());
+        Integer handle = obj2HandleMap.get(object);
+        if (handle != null) {
+            fillHandle(new Handle(handle));
+            return;
+        }
         Queue<Object> queue = new LinkedList<Object>();
+        obj2HandleMap.put(object, writtenItem);
+        writtenItem++;
         queue.add(object);
         while (queue.size() != 0) {
             object = queue.remove();
@@ -38,11 +47,26 @@ public class IntruderOutStream extends Stream{
                 fillNull();
                 continue;
             }
-            Object[] refs = ObjectModel.getAllReferences(object);
-//            for (Object o : refs)
-//                queue.add(o);
-            queue.addAll(Arrays.asList(refs));
+            if (object.getClass() == Handle.class) {
+                fillHandle((Handle)object);
+                continue;
+            }
             fill(object);
+            Object[] refs = ObjectModel.getAllReferences(object);
+            for (Object o : refs) {
+                if (o == null) {
+                    queue.add(null);
+                } else {
+                    handle = obj2HandleMap.get(o);
+                    if (handle != null) {
+                        queue.add(new Handle(handle));
+                    } else {
+                        obj2HandleMap.put(o, writtenItem);
+                        queue.add(o);
+                    }
+                }
+                writtenItem++;
+            }
         }
     }
 
@@ -88,6 +112,23 @@ public class IntruderOutStream extends Stream{
         }
         ringBuffer.fillNull();
     }
+
+    private void fillHandle(Handle handle) throws IOException {
+        int size = 8;
+        while (true) {
+            int reserved = ringBuffer.reserve(size);
+            if (reserved == -1) {
+                ringBuffer.flush(false);
+                continue;
+            }
+            if (reserved > remoteBuffer.freeSpace()) {
+                ringBuffer.flush(true);
+                continue;
+            }
+            break;
+        }
+        ringBuffer.fillHandle(handle);
+    }
     @Override
     public void close() {
 
@@ -127,21 +168,31 @@ public class IntruderOutStream extends Stream{
             assert(tailToHead(head) < length);
         }
 
-    //copy all primitive slots and returns all reference slots.
-	private void fillObject(Object object) {
-	    //找到满足对齐要求的起始地址
-	    //跳过header，复制数据
-	    //改写头部数据:将TIB指针改为类注册ID;status的部分留给接收端处理
-	    //填充padding
-	    assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
-	    int start = ObjectModel.alignObjectAllocation(head);
-	    if (head != start)
-            ObjectModel.fillGap(addr.plus(head));
-	    ObjectModel.copyObject(object, addr.plus(start));
-	    ObjectModel.setRegisteredID(object, addr.plus(start));
-	    head = start + ObjectModel.getAlignedUpSize(object);
-	    assert(tailToHead(head) < length);
-	}
+        public void fillHandle(Handle handle) {
+            assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
+            int start = ObjectModel.alignObjectAllocation(head);
+            if (head != start)
+                ObjectModel.fillGap(addr.plus(head));
+            HeaderEncoding.getHeaderEncoding(addr.plus(start)).setHandleType(handle.index);
+            head = start + 8;
+            assert (tailToHead(head) < length);
+        }
+
+        //copy all primitive slots and returns all reference slots.
+        private void fillObject(Object object) {
+            //找到满足对齐要求的起始地址
+            //跳过header，复制数据
+            //改写头部数据:将TIB指针改为类注册ID;status的部分留给接收端处理
+            //填充padding
+            assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
+            int start = ObjectModel.alignObjectAllocation(head);
+            if (head != start)
+                ObjectModel.fillGap(addr.plus(head));
+            ObjectModel.copyObject(object, addr.plus(start));
+            ObjectModel.setRegisteredID(object, addr.plus(start));
+            head = start + ObjectModel.getAlignedUpSize(object);
+            assert(tailToHead(head) < length);
+        }
 
         public void flush(boolean allocRemoteBuffer) throws IOException{
             if (head == tail) {
@@ -182,6 +233,11 @@ public class IntruderOutStream extends Stream{
         public void peekBytes(int offset, int size) {
             Utils.peekBytes("ring buffer", addr, offset, size, 3);
         }
+
+        public void peekBytes() {
+            peekBytes(0, head);
+        }
+
     }
 
 }

@@ -4,7 +4,6 @@ import intruder.*;
 import intruder.tests.TargetPrimitiveObject;
 import intruder.tests.TargetRefObject;
 import intruder.tests.TargetSimpleObject;
-import org.vmmagic.unboxed.AddressArray;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -48,6 +47,20 @@ public class Server {
         for (TargetRefObject obj : array) {
             Utils.log(obj.toString());
         }
+
+        TargetRefObject obj1 = (TargetRefObject) instream.readObject();
+        TargetRefObject obj2 = (TargetRefObject) instream.readObject();
+        TargetRefObject obj3 = (TargetRefObject) instream.readObject();
+        Utils.log("obj1 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj1.ref3).toLong())
+                + " obj2 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj2).toLong()));
+        Utils.log("obj2 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj2.ref3).toLong())
+                + " obj3 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj3).toLong()));
+        Utils.log("obj3 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj3.ref3).toLong())
+                + " obj1 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj1).toLong()));
+        TargetRefObject[] refObjects = (TargetRefObject[]) instream.readObject();
+        TargetSimpleObject[][] sharedElementArray = (TargetSimpleObject[][]) instream.readObject();
+
+        Utils.log("pass!");
         System.in.read();
     }
 

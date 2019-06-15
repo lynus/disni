@@ -6,11 +6,14 @@ import org.vmmagic.unboxed.AddressArray;
 import org.vmmagic.unboxed.ObjectReference;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
 
 public class IntruderInStream extends Stream {
     private LocalBuffer firstBuffer, lastBuffer, currentBuffer;
+    private HashMap<Integer, Object> int2ObjectMap = new HashMap<Integer, Object>();
+    private int readItem = 0;
 
     public IntruderInStream(Endpoint ep) throws IOException {
         super(ep);
@@ -29,6 +32,13 @@ public class IntruderInStream extends Stream {
           GC 部分
         */
         Object root = ObjectModel.initializeHeader(header);
+        if (root.getClass() == Handle.class) {
+            root = int2ObjectMap.get(((Handle) root).index);
+            assert(root != null);
+            return root;
+        }
+        int2ObjectMap.put(readItem, root);
+        readItem++;
         AddressArray slots = ObjectModel.getAllReferenceSlots(root);
         Queue<Address> queue = new LinkedList<Address>();
         for (int i = 0; i < slots.length(); i++)
@@ -37,9 +47,22 @@ public class IntruderInStream extends Stream {
             Address slot = queue.remove();
             ret = LocalBuffer.getNextAddr(currentBuffer);
             currentBuffer = ret.getLocalBuffer();
-            Object obj = ObjectModel.initializeHeader(ret.getAddr());
+            Object item = ObjectModel.initializeHeader(ret.getAddr());
+            Object obj = null;
+            if (item != null) {
+                if (item.getClass() == Handle.class) {
+                    obj = int2ObjectMap.get(((Handle) item).index);
+                    if (obj == null)
+                        Utils.log("null obj, readItem: " + readItem);
+                    assert (obj != null);
+                } else {
+                    obj = item;
+                    int2ObjectMap.put(readItem, obj);
+                }
+            }
+            readItem++;
             slot.store(ObjectReference.fromObject(obj).toAddress().toLong());
-            if (obj == null)
+            if (obj == null || item.getClass() == Handle.class)
                 continue;
             slots = ObjectModel.getAllReferenceSlots(obj);
             for (int i = 0; i < slots.length(); i++)

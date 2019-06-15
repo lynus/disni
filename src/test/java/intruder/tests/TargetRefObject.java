@@ -6,6 +6,7 @@ import org.vmmagic.pragma.RDMA;
 public class TargetRefObject extends TargetSimpleObject {
     public TargetPrimitiveObject ref1;
     public TargetPrimitiveObject ref2;
+    public TargetRefObject ref3;
     @Override
     public String toString() {
         String ret;

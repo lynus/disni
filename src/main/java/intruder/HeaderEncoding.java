@@ -49,4 +49,8 @@ public class HeaderEncoding {
     public boolean isNullType() {
         return getType() == TYPE_NULL;
     }
+
+    public boolean isHandleType() {
+        return getType() == TYPE_HANDLE;
+    }
 }

@@ -87,8 +87,12 @@ public class ObjectModel {
     }
 
     public static Object initializeHeader(Address ptr) {
-        if (HeaderEncoding.getHeaderEncoding(ptr).isNullType())
+        HeaderEncoding he  = HeaderEncoding.getHeaderEncoding(ptr);
+        if (he.isNullType())
             return null;
+        if (he.isHandleType()) {
+            return new Stream.Handle(he.getHandle());
+        }
         Class cls = getClassByHeader(ptr);
         RVMType type = getType(cls);
         TIB tib;

@@ -18,4 +18,11 @@ public abstract class Stream {
     }
 
     public abstract void close();
+
+    static class Handle {
+        int index;
+        public Handle(int index) {
+            this.index = index;
+        }
+    }
 }

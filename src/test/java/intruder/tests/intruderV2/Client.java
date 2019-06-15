@@ -46,6 +46,36 @@ public class Client {
         }
         outStream.writeObject(array);
         outStream.flush();
+
+        TargetRefObject r1 = new TargetRefObject();
+        TargetRefObject r2= new TargetRefObject();
+        TargetRefObject r3 = new TargetRefObject();
+        r1.ref3 = r2; r2.ref3 = r3; r3.ref3 = r1;
+        outStream.writeObject(r1);
+        outStream.writeObject(r2);
+        outStream.writeObject(r3);
+
+        outStream.flush();
+        TargetRefObject[] refObjects = new TargetRefObject[128];
+        for (int i = 0; i < refObjects.length; i++) {
+            if (i % 3 == 0)
+                refObjects[i] = r1;
+            else if (i % 3 == 1)
+                refObjects[i] = r2;
+            else
+                refObjects[i] = r3;
+        }
+        outStream.writeObject(refObjects);
+
+        TargetSimpleObject[] bigArray = new TargetSimpleObject[2048];
+        for (int i = 0; i < bigArray.length; i++)
+            bigArray[i] = new TargetSimpleObject();
+        TargetSimpleObject[][] sharedElementArray = new TargetSimpleObject[4000][];
+        for (int i = 0; i < sharedElementArray.length; i++)
+            sharedElementArray[i] = bigArray;
+        outStream.writeObject(sharedElementArray);
+        outStream.flush();
+
         System.out.println("outstream connectionID: " + outStream.getConnectionId());
         System.gc();
         System.in.read();

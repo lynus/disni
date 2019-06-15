@@ -66,9 +66,11 @@ public class LocalBuffer extends Buffer {
         if ((pointer & 7) != 0)
             pointer += 4;
         AddrBufferRet ret = new AddrBufferRet(start.plus(pointer), this);
-        if (HeaderEncoding.getHeaderEncoding(start.plus(pointer)).isNullType()) {
-           pointer += 8;
-        } else {
+        HeaderEncoding he = HeaderEncoding.getHeaderEncoding(start.plus(pointer));
+        if (he.isNullType() || he.isHandleType()) {
+            pointer += 8;
+        }
+        else {
             int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByHeader(start.plus(pointer)), start.plus(pointer));
             pointer += size;
         }
