@@ -17,6 +17,7 @@ public class Server {
         Factory.registerRdmaClass(TargetSimpleObject.class);
         Factory.registerRdmaClass(Integer.class);
         Factory.registerRdmaClass(TargetRefObject.class);
+        Factory.registerRdmaClass(String.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Listener listener = Factory.newListener(address);
         Endpoint ep = listener.accept();
@@ -59,6 +60,9 @@ public class Server {
                 + " obj1 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj1).toLong()));
         TargetRefObject[] refObjects = (TargetRefObject[]) instream.readObject();
         TargetSimpleObject[][] sharedElementArray = (TargetSimpleObject[][]) instream.readObject();
+
+        String str = (String)instream.readObject();
+        Utils.log(str);
 
         Utils.log("pass!");
         System.in.read();

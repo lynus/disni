@@ -18,6 +18,7 @@ public class Client {
         Factory.registerRdmaClass(TargetSimpleObject.class);
         Factory.registerRdmaClass(Integer.class);
         Factory.registerRdmaClass(TargetRefObject.class);
+        Factory.registerRdmaClass(String.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Endpoint ep = Factory.newEndpoint();
         ep.connect(address, 10);
@@ -76,6 +77,9 @@ public class Client {
         outStream.writeObject(sharedElementArray);
         outStream.flush();
 
+        String str = new String("hello world!");
+        outStream.writeObject(str);
+        outStream.flush();
         System.out.println("outstream connectionID: " + outStream.getConnectionId());
         System.gc();
         System.in.read();
