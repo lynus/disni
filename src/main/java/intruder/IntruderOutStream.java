@@ -17,6 +17,7 @@ public class IntruderOutStream extends Stream{
     private RingBuffer ringBuffer;
     private HashMap<Object, Integer> obj2HandleMap = new HashMap<Object, Integer>();
     private int writtenItem = 0;
+    private boolean useHandle = true;
     public IntruderOutStream(Endpoint ep) throws IOException{
         super(ep);
         rpcClient = new RPCClient(connectionId);
@@ -29,20 +30,29 @@ public class IntruderOutStream extends Stream{
         ringBuffer = new RingBuffer(1 << 20);
     }
 
+    public void enableHandle() {
+        this.useHandle = true;
+    }
+    public void disableHandle() {
+        this.useHandle = false;
+    }
+
     public void writeObject(Object object) throws IOException {
         if (Factory.query(object.getClass()) == -1)
             throw new IOException("type not registered: " + object.getClass().getCanonicalName());
-        Integer handle = obj2HandleMap.get(object);
-        if (handle != null) {
-            fillHandle(new Handle(handle));
-            return;
-        }
         if (object.getClass().isEnum()) {
             fillEnum((Enum)object);
             return;
         }
+        if (useHandle) {
+            Integer handle = obj2HandleMap.get(object);
+            if (handle != null) {
+                fillHandle(new Handle(handle));
+                return;
+            }
+            obj2HandleMap.put(object, writtenItem);
+        }
         Queue<Object> queue = new LinkedList<Object>();
-        obj2HandleMap.put(object, writtenItem);
         writtenItem++;
         queue.add(object);
         while (queue.size() != 0) {
@@ -52,6 +62,7 @@ public class IntruderOutStream extends Stream{
                 continue;
             }
             if (object.getClass() == Handle.class) {
+                assert(useHandle);
                 fillHandle((Handle)object);
                 continue;
             }
@@ -64,8 +75,11 @@ public class IntruderOutStream extends Stream{
             for (Object o : refs) {
                 if (o == null) {
                     queue.add(null);
+                } else if (!useHandle) {
+                    //normal object and enum
+                    queue.add(o);
                 } else {
-                    handle = obj2HandleMap.get(o);
+                    Integer handle = obj2HandleMap.get(o);
                     if (handle != null) {
                         queue.add(new Handle(handle));
                     } else if (o.getClass().isEnum()) {

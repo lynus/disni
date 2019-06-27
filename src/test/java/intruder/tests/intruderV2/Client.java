@@ -84,6 +84,22 @@ public class Client {
         TestEnum myday = TestEnum.FRIDAY;
         outStream.writeObject(myday);
         outStream.flush();
+
+        outStream.disableHandle();
+        r1.ref1 = new TargetPrimitiveObject();
+        r2.ref1 = r1.ref1;
+        r3.ref2 = r1.ref1;
+        r1.ref3 = r2.ref3 = r3.ref3 = null;
+        outStream.writeObject(r1);
+        outStream.writeObject(r2);
+        outStream.writeObject(r3);
+        outStream.flush();
+
+        outStream.enableHandle();
+        outStream.writeObject(r1);
+        outStream.writeObject(r2);
+        outStream.writeObject(r3);
+        outStream.flush();
         System.out.println("outstream connectionID: " + outStream.getConnectionId());
         System.gc();
         System.in.read();

@@ -69,6 +69,20 @@ public class Server {
 
         TestEnum myday = (TestEnum) instream.readObject();
         Utils.log("Enum myday: " + myday.toString());
+
+        //remote outStream disabled handle
+        obj1 = (TargetRefObject) instream.readObject();
+        obj2 = (TargetRefObject) instream.readObject();
+        obj3 = (TargetRefObject) instream.readObject();
+        assert(obj1.ref1 != obj2.ref1);
+        assert(obj2.ref1 != obj3.ref1);
+
+        //now enabled handle
+        obj1 = (TargetRefObject) instream.readObject();
+        obj2 = (TargetRefObject) instream.readObject();
+        obj3 = (TargetRefObject) instream.readObject();
+        assert(obj1.ref1 == obj2.ref1);
+        assert(obj2.ref1 == obj3.ref1);
         Utils.log("pass!");
         System.in.read();
     }
