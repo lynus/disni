@@ -4,6 +4,7 @@ import intruder.*;
 import intruder.tests.TargetPrimitiveObject;
 import intruder.tests.TargetRefObject;
 import intruder.tests.TargetSimpleObject;
+import intruder.tests.TestEnum;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -19,6 +20,7 @@ public class Client {
         Factory.registerRdmaClass(Integer.class);
         Factory.registerRdmaClass(TargetRefObject.class);
         Factory.registerRdmaClass(String.class);
+        Factory.registerRdmaClass(TestEnum.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Endpoint ep = Factory.newEndpoint();
         ep.connect(address, 10);
@@ -79,6 +81,8 @@ public class Client {
 
         String str = new String("hello world!");
         outStream.writeObject(str);
+        TestEnum myday = TestEnum.FRIDAY;
+        outStream.writeObject(myday);
         outStream.flush();
         System.out.println("outstream connectionID: " + outStream.getConnectionId());
         System.gc();

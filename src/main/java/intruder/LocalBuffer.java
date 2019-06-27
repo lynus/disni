@@ -67,7 +67,7 @@ public class LocalBuffer extends Buffer {
             pointer += 4;
         AddrBufferRet ret = new AddrBufferRet(start.plus(pointer), this);
         HeaderEncoding he = HeaderEncoding.getHeaderEncoding(start.plus(pointer));
-        if (he.isNullType() || he.isHandleType()) {
+        if (he.isNullType() || he.isHandleType() || he.isEnumType()) {
             pointer += 8;
         }
         else {

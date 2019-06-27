@@ -54,6 +54,10 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
         return idManager.query(cls);
     }
 
+    static public Enum query(int id, int ordinal) {
+        return idManager.queryEnum(id, ordinal);
+    }
+
     static public void close() throws InterruptedException, IOException {
         group.close();
     }

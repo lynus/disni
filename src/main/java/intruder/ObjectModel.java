@@ -93,6 +93,9 @@ public class ObjectModel {
         if (he.isHandleType()) {
             return new Stream.Handle(he.getHandle());
         }
+        if (he.isEnumType()) {
+            return getEnumByHeader(he);
+        }
         Class cls = getClassByHeader(ptr);
         RVMType type = getType(cls);
         TIB tib;
@@ -139,6 +142,12 @@ public class ObjectModel {
         if (dimension == 0)
             return cls;
         return getNDimensionArrayType(getType(cls), dimension).getClassForType();
+    }
+
+    public static Enum getEnumByHeader(HeaderEncoding he) {
+        int id = he.getID();
+        int ordinal = he.getOrdinal();
+        return Factory.query(id, ordinal);
     }
 
     public static Address getArrayAddress(Object object) {

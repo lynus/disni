@@ -7,6 +7,7 @@ public class TargetRefObject extends TargetSimpleObject {
     public TargetPrimitiveObject ref1;
     public TargetPrimitiveObject ref2;
     public TargetRefObject ref3;
+    public TestEnum testEnum = TestEnum.SUNDAY;
     @Override
     public String toString() {
         String ret;
@@ -18,6 +19,7 @@ public class TargetRefObject extends TargetSimpleObject {
             ret += "ref2: NULL, ";
         else
             ret += "ref2: " + ref2.toString();
+        ret +=" TestEnum: " + testEnum.toString();
         ret += " " + super.toString();
         return ret;
     }

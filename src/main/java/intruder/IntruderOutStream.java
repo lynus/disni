@@ -37,6 +37,10 @@ public class IntruderOutStream extends Stream{
             fillHandle(new Handle(handle));
             return;
         }
+        if (object.getClass().isEnum()) {
+            fillEnum((Enum)object);
+            return;
+        }
         Queue<Object> queue = new LinkedList<Object>();
         obj2HandleMap.put(object, writtenItem);
         writtenItem++;
@@ -51,6 +55,10 @@ public class IntruderOutStream extends Stream{
                 fillHandle((Handle)object);
                 continue;
             }
+            if (object.getClass().isEnum()) {
+                fillEnum((Enum)object);
+                continue;
+            }
             fill(object);
             Object[] refs = ObjectModel.getAllReferences(object);
             for (Object o : refs) {
@@ -60,6 +68,8 @@ public class IntruderOutStream extends Stream{
                     handle = obj2HandleMap.get(o);
                     if (handle != null) {
                         queue.add(new Handle(handle));
+                    } else if (o.getClass().isEnum()) {
+                        queue.add(o);
                     } else {
                         obj2HandleMap.put(o, writtenItem);
                         queue.add(o);
@@ -129,6 +139,23 @@ public class IntruderOutStream extends Stream{
         }
         ringBuffer.fillHandle(handle);
     }
+
+    private void fillEnum(Enum e) throws IOException {
+        int size = 8;
+        while (true) {
+            int reserved = ringBuffer.reserve(size);
+            if (reserved == -1) {
+                ringBuffer.flush(false);
+                continue;
+            }
+            if (reserved > remoteBuffer.freeSpace()) {
+                ringBuffer.flush(true);
+                continue;
+            }
+            break;
+        }
+        ringBuffer.fillEnum(e);
+    }
     @Override
     public void close() {
 
@@ -174,6 +201,17 @@ public class IntruderOutStream extends Stream{
             if (head != start)
                 ObjectModel.fillGap(addr.plus(head));
             HeaderEncoding.getHeaderEncoding(addr.plus(start)).setHandleType(handle.index);
+            head = start + 8;
+            assert (tailToHead(head) < length);
+        }
+
+        public void fillEnum(Enum e) {
+            assert((head & ObjectModel.MIN_ALIGNMENT -1) ==0);
+            int start = ObjectModel.alignObjectAllocation(head);
+            if (head != start)
+                ObjectModel.fillGap(addr.plus(head));
+            int id = Factory.query(e.getClass());
+            HeaderEncoding.getHeaderEncoding(addr.plus(start)).setEnumType(id, e.ordinal());
             head = start + 8;
             assert (tailToHead(head) < length);
         }

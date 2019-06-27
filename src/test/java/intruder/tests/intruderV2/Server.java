@@ -4,6 +4,7 @@ import intruder.*;
 import intruder.tests.TargetPrimitiveObject;
 import intruder.tests.TargetRefObject;
 import intruder.tests.TargetSimpleObject;
+import intruder.tests.TestEnum;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -18,6 +19,7 @@ public class Server {
         Factory.registerRdmaClass(Integer.class);
         Factory.registerRdmaClass(TargetRefObject.class);
         Factory.registerRdmaClass(String.class);
+        Factory.registerRdmaClass(TestEnum.class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Listener listener = Factory.newListener(address);
         Endpoint ep = listener.accept();
@@ -63,7 +65,10 @@ public class Server {
 
         String str = (String)instream.readObject();
         Utils.log(str);
+        Utils.log(obj1.toString());
 
+        TestEnum myday = (TestEnum) instream.readObject();
+        Utils.log("Enum myday: " + myday.toString());
         Utils.log("pass!");
         System.in.read();
     }

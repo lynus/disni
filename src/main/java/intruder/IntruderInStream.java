@@ -37,6 +37,9 @@ public class IntruderInStream extends Stream {
             assert(root != null);
             return root;
         }
+        if (root.getClass().isEnum()) {
+            return root;
+        }
         int2ObjectMap.put(readItem, root);
         readItem++;
         AddressArray slots = ObjectModel.getAllReferenceSlots(root);
@@ -55,6 +58,8 @@ public class IntruderInStream extends Stream {
                     if (obj == null)
                         Utils.log("null obj, readItem: " + readItem);
                     assert (obj != null);
+                } else if (item.getClass().isEnum()) {
+                    obj = item;
                 } else {
                     obj = item;
                     int2ObjectMap.put(readItem, obj);
@@ -62,7 +67,7 @@ public class IntruderInStream extends Stream {
             }
             readItem++;
             slot.store(ObjectReference.fromObject(obj).toAddress().toLong());
-            if (obj == null || item.getClass() == Handle.class)
+            if (obj == null || item.getClass() == Handle.class || item.getClass().isEnum())
                 continue;
             slots = ObjectModel.getAllReferenceSlots(obj);
             for (int i = 0; i < slots.length(); i++)
