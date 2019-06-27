@@ -9,13 +9,14 @@ import org.jikesrvm.runtime.Magic;
 import org.jikesrvm.runtime.Memory;
 import org.mmtk.utility.Constants;
 import org.vmmagic.pragma.Inline;
+import org.vmmagic.pragma.Uninterruptible;
 import org.vmmagic.unboxed.Address;
 import org.vmmagic.unboxed.AddressArray;
 import org.vmmagic.unboxed.ObjectReference;
 
 import static org.jikesrvm.classloader.RVMType.REFARRAY_OFFSET_ARRAY;
 import static org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE;
-
+@Uninterruptible
 public class ObjectModel {
     public final static int REF_OFFSET = 24;
     public final static int OBJECT_OFFSET_ALIGN = 16;
