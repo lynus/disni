@@ -100,6 +100,9 @@ public class Client {
         outStream.writeObject(r2);
         outStream.writeObject(r3);
         outStream.flush();
+        long start = System.currentTimeMillis();
+        outStream.waitRemoteFinish();
+        Utils.log("wait time (ms): " + (System.currentTimeMillis() - start));
         System.out.println("outstream connectionID: " + outStream.getConnectionId());
         System.gc();
         System.in.read();

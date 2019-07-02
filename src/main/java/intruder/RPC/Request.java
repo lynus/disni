@@ -9,11 +9,13 @@ public class Request implements DaRPCMessage {
     public final static int RESERVE_BUFFER_CMD = 1;
     public final static int NOTIFY_BUFFER_LIMIT_CMD = 2;
     public final static int RELEASE_AND_RESERVE_CMD = 3;
+    public final static int WAIT_FINISH_CMD = 4;
     private final static int SIZE = 8 + 16;
     public int cmd, connectId;
     public ReserveBufferREQ reserveBufferREQ;
     public NotifyBufferLimitREQ notifyBufferLimitREQ;
     public ReleaseAndReserveREQ releaseAndReserveREQ;
+    public WaitFinishREQ waitFinishREQ;
 
     public Request() {}
     public Request(int connectId, ReserveBufferREQ reserveBufferREQ) {
@@ -34,6 +36,12 @@ public class Request implements DaRPCMessage {
         this.releaseAndReserveREQ = releaseAndReserveREQ;
     }
 
+    public Request(int connectId, WaitFinishREQ waitFinishREQ) {
+        this.connectId = connectId;
+        this.cmd = waitFinishREQ.type();
+        this.waitFinishREQ = waitFinishREQ;
+    }
+
     @Override
     public int write(ByteBuffer buffer) throws IOException {
         buffer.putInt(connectId);
@@ -48,6 +56,9 @@ public class Request implements DaRPCMessage {
                 break;
             case RELEASE_AND_RESERVE_CMD:
                 written += releaseAndReserveREQ.write(buffer);
+                break;
+            case WAIT_FINISH_CMD:
+                written += waitFinishREQ.write(buffer);
                 break;
         }
         return written;
@@ -68,6 +79,10 @@ public class Request implements DaRPCMessage {
             case RELEASE_AND_RESERVE_CMD:
                 this.releaseAndReserveREQ = new ReleaseAndReserveREQ();
                 releaseAndReserveREQ.update(buffer);
+                break;
+            case WAIT_FINISH_CMD:
+                this.waitFinishREQ = new WaitFinishREQ();
+                waitFinishREQ.update(buffer);
                 break;
         }
     }
@@ -156,6 +171,12 @@ public class Request implements DaRPCMessage {
             this.start = start;
         }
         public ReleaseAndReserveREQ() {}
+    }
+
+    public static class WaitFinishREQ extends NOPayLoad implements REQ{
+        public int type() {
+            return WAIT_FINISH_CMD;
+        }
     }
 }
 

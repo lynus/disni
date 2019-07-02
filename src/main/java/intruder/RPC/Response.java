@@ -4,9 +4,7 @@ import com.ibm.darpc.DaRPCMessage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static intruder.RPC.Request.NOTIFY_BUFFER_LIMIT_CMD;
-import static intruder.RPC.Request.RELEASE_AND_RESERVE_CMD;
-import static intruder.RPC.Request.RESERVE_BUFFER_CMD;
+import static intruder.RPC.Request.*;
 
 public class Response implements DaRPCMessage {
     public static final int FAILED = -1;
@@ -17,6 +15,7 @@ public class Response implements DaRPCMessage {
     public ReserveBufferRES reserveBufferRES;
     public NotifyBufferLimitRES notifyBufferLimitRES;
     public ReleaseAndReserveRES releaseAndReserveRES;
+    public WaitFinishRES waitFinishRES;
 
     public void setReserveBufferRES(ReserveBufferRES reserveBufferRES) {
         this.reserveBufferRES = reserveBufferRES;
@@ -32,6 +31,12 @@ public class Response implements DaRPCMessage {
     public void setReleaseAndReserveRES(ReleaseAndReserveRES releaseAndReserveRES) {
         this.releaseAndReserveRES = releaseAndReserveRES;
         cmd = releaseAndReserveRES.type();
+        status = SUCCESS;
+    }
+
+    public void setWaitFinishRES(WaitFinishRES waitFinishRES) {
+        this.waitFinishRES = waitFinishRES;
+        cmd = waitFinishRES.type();
         status = SUCCESS;
     }
 
@@ -51,7 +56,10 @@ public class Response implements DaRPCMessage {
                 case RELEASE_AND_RESERVE_CMD:
                     written += releaseAndReserveRES.write(buffer);
                     break;
-            }
+                case WAIT_FINISH_CMD:
+                    written += waitFinishRES.write(buffer);
+                    break;
+                }
         }
         return written;
     }
@@ -74,6 +82,10 @@ public class Response implements DaRPCMessage {
             case RELEASE_AND_RESERVE_CMD:
                 releaseAndReserveRES = new ReleaseAndReserveRES();
                 releaseAndReserveRES.update(buffer);
+                break;
+            case WAIT_FINISH_CMD:
+                waitFinishRES = new WaitFinishRES();
+                waitFinishRES.update(buffer);
                 break;
         }
     }
@@ -146,6 +158,12 @@ public class Response implements DaRPCMessage {
         }
         public ReleaseAndReserveRES(long start, int size, int rkey) {
             super(start, size, rkey);
+        }
+    }
+
+    public static class WaitFinishRES extends  NoPayLoad implements RES {
+        public int type() {
+            return WAIT_FINISH_CMD;
         }
     }
 }

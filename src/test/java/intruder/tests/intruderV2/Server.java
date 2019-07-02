@@ -81,6 +81,7 @@ public class Server {
         obj1 = (TargetRefObject) instream.readObject();
         obj2 = (TargetRefObject) instream.readObject();
         obj3 = (TargetRefObject) instream.readObject();
+        instream.setFinish();
         assert(obj1.ref1 == obj2.ref1);
         assert(obj2.ref1 == obj3.ref1);
         Utils.log("pass!");

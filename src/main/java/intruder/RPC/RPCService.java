@@ -92,8 +92,13 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 break;
             case Request.RELEASE_AND_RESERVE_CMD:
                 break;
+            case Request.WAIT_FINISH_CMD:
+                response.setWaitFinishRES(new Response.WaitFinishRES());
+                while(true) {
+                    if (!inStream.isFinish()) {}
+                    else break;
+                }
             }
-
         }
         event.triggerResponse();
     }

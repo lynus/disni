@@ -3,6 +3,7 @@ package intruder;
 import com.ibm.disni.util.MemoryUtils;
 import com.ibm.disni.verbs.IbvMr;
 import intruder.RPC.RPCClient;
+import org.vmmagic.pragma.Inline;
 import org.vmmagic.unboxed.Address;
 
 import java.io.IOException;
@@ -35,6 +36,9 @@ public class IntruderOutStream extends Stream{
     }
     public void disableHandle() {
         this.useHandle = false;
+    }
+    public void waitRemoteFinish() throws IOException{
+        rpcClient.waitRemoteFinish();
     }
 
     public void writeObject(Object object) throws IOException {
@@ -198,32 +202,32 @@ public class IntruderOutStream extends Stream{
                 return -1;
             return tailToHead() + size;
         }
+        @Inline
+        private int alignAlloc() {
+            assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
+            int ret = ObjectModel.alignObjectAllocation(head);
+            if (ret != head) {
+                ObjectModel.fillGap(addr.plus(head));
+            }
+            return ret;
+        }
 
         public void fillNull() {
-            assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
-            int start = ObjectModel.alignObjectAllocation(head);
-            if (head != start)
-                ObjectModel.fillGap(addr.plus(head));
+            int start = alignAlloc();
             HeaderEncoding.getHeaderEncoding(addr.plus(start)).setNullType();
             head = start + 8;
             assert(tailToHead(head) < length);
         }
 
         public void fillHandle(Handle handle) {
-            assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
-            int start = ObjectModel.alignObjectAllocation(head);
-            if (head != start)
-                ObjectModel.fillGap(addr.plus(head));
+            int start = alignAlloc();
             HeaderEncoding.getHeaderEncoding(addr.plus(start)).setHandleType(handle.index);
             head = start + 8;
             assert (tailToHead(head) < length);
         }
 
         public void fillEnum(Enum e) {
-            assert((head & ObjectModel.MIN_ALIGNMENT -1) ==0);
-            int start = ObjectModel.alignObjectAllocation(head);
-            if (head != start)
-                ObjectModel.fillGap(addr.plus(head));
+            int start = alignAlloc();
             int id = Factory.query(e.getClass());
             HeaderEncoding.getHeaderEncoding(addr.plus(start)).setEnumType(id, e.ordinal());
             head = start + 8;
@@ -236,10 +240,7 @@ public class IntruderOutStream extends Stream{
             //跳过header，复制数据
             //改写头部数据:将TIB指针改为类注册ID;status的部分留给接收端处理
             //填充padding
-            assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
-            int start = ObjectModel.alignObjectAllocation(head);
-            if (head != start)
-                ObjectModel.fillGap(addr.plus(head));
+            int start = alignAlloc();
             ObjectModel.copyObject(object, addr.plus(start));
             ObjectModel.setRegisteredID(object, addr.plus(start));
             head = start + ObjectModel.getAlignedUpSize(object);

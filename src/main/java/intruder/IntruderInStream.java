@@ -14,7 +14,7 @@ public class IntruderInStream extends Stream {
     private LocalBuffer firstBuffer, lastBuffer, currentBuffer;
     private HashMap<Integer, Object> int2ObjectMap = new HashMap<Integer, Object>();
     private int readItem = 0;
-
+    private volatile boolean finish = false;
     public IntruderInStream(Endpoint ep) throws IOException {
         super(ep);
         RPCService.setHost(ep.serverHost);
@@ -92,5 +92,15 @@ public class IntruderInStream extends Stream {
     }
     public LocalBuffer getLastBuffer() {
         return lastBuffer;
+    }
+
+    public void setFinish() {
+        finish = true;
+    }
+    public void setUnfinish() {
+        finish = false;
+    }
+    public boolean isFinish() {
+        return finish;
     }
 }

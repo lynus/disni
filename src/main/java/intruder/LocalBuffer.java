@@ -70,7 +70,10 @@ public class LocalBuffer extends Buffer {
         if (he.isNullType() || he.isHandleType() || he.isEnumType()) {
             pointer += 8;
         }
-        else {
+        else if (he.getType() != HeaderEncoding.TYPE_OBJECT) {
+            Utils.log("error HE type, pointer: " + pointer + "type: "+ he.getType());
+            assert(false);
+        } else {
             int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByHeader(start.plus(pointer)), start.plus(pointer));
             pointer += size;
         }

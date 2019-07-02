@@ -79,5 +79,13 @@ public class RPCClient {
         buffer.setup(msg.rkey, msg.start, msg.size, this);
         Utils.log("release_and_reserve success");
     }
+    public void waitRemoteFinish() throws IOException {
+        Request request = new Request(connectId, new Request.WaitFinishREQ());
+        Response response = new Response();
+        DaRPCFuture<Request, Response> future = stream.request(request, response, false);
+        while (!future.isDone()) {}
+        if (response.status != Response.SUCCESS)
+            throw new IOException("wait finish rpc failed");
+    }
 
 }
