@@ -43,7 +43,7 @@ public class RdmaClassIdManager{
     public int registerClass(Class cls) {
         Integer ret;
         String className = cls.getCanonicalName();
-        System.out.println("registerClass get name: " + className);
+        Utils.log("registerClass get name: " + className);
         RVMType type = java.lang.JikesRVMSupport.getTypeForClass(cls);
         ret = classToIdMap.get(type);
         if (ret != null)

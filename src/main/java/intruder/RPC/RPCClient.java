@@ -55,7 +55,7 @@ public class RPCClient {
             throw new IOException("reserveBuffer rpc failed");
         Response.ReserveBufferRES msg = response.reserveBufferRES;
         buffer.setup(msg.rkey, msg.start, msg.size, this);
-        System.err.println("reserveBuffer start: " + Long.toHexString(msg.start) + " size: " + msg.size);
+        Utils.log("reserveBuffer start: " + Long.toHexString(msg.start) + " size: " + msg.size);
     }
 
     public void notifyBufferLimit(long bufferStart, int limit, boolean needGap) throws IOException{
