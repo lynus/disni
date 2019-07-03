@@ -82,7 +82,11 @@ public class RemoteBuffer extends Buffer{
 
     //notify remote host the limit pointer of this buffer
     public void notifyLimit() throws IOException{
-        rpcClient.notifyBufferLimit(start.toLong(), begin);
+        if ((begin & 7) == 4) {
+            rpcClient.notifyBufferLimit(start.toLong(), begin, true);
+            begin += 4;
+        } else
+            rpcClient.notifyBufferLimit(start.toLong(), begin, false);
     }
 
     public void reserve() throws IOException {

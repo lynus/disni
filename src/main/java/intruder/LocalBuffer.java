@@ -20,7 +20,11 @@ public class LocalBuffer extends Buffer {
     public int getRkey() {
         return rkey;
     }
-    public void setLimit(int limit) {
+    public void setLimit(int limit, boolean needGap) {
+        if (needGap) {
+            assert((limit & 7) == 4);
+            start.plus(limit).store(org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE);
+        }
         this.limit = limit;
     }
 

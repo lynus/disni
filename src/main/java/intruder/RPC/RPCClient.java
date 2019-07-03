@@ -58,8 +58,8 @@ public class RPCClient {
         System.err.println("reserveBuffer start: " + Long.toHexString(msg.start) + " size: " + msg.size);
     }
 
-    public void notifyBufferLimit(long bufferStart, int limit) throws IOException{
-        Request request = new Request(connectId, new Request.NotifyBufferLimitREQ(bufferStart, limit));
+    public void notifyBufferLimit(long bufferStart, int limit, boolean needGap) throws IOException{
+        Request request = new Request(connectId, new Request.NotifyBufferLimitREQ(bufferStart, limit, needGap));
         Response response = new Response();
         DaRPCFuture<Request, Response> future = stream.request(request, response, false);
         while (!future.isDone()) {}
