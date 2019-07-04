@@ -69,16 +69,13 @@ public class LocalBuffer extends Buffer {
               org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE));
         if ((pointer & 7) != 0)
             pointer += 4;
-        AddrBufferRet ret = new AddrBufferRet(start.plus(pointer), this);
-        HeaderEncoding he = HeaderEncoding.getHeaderEncoding(start.plus(pointer));
-        if (he.isNullType() || he.isHandleType() || he.isEnumType()) {
+        Address header = start.plus(pointer);
+        AddrBufferRet ret = new AddrBufferRet(header, this);
+        if (HeaderEncoding.isNoneObjectType(header)) {
             pointer += 8;
-        }
-        else if (he.getType() != HeaderEncoding.TYPE_OBJECT) {
-            Utils.log("error HE type, pointer: " + pointer + "type: "+ he.getType());
-            assert(false);
         } else {
-            int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByHeader(start.plus(pointer)), start.plus(pointer));
+            assert (HeaderEncoding.isObjectType(header));
+            int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByHeader(header), header);
             pointer += size;
         }
         assert(pointer <= limit);

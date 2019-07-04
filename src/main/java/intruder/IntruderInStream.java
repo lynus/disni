@@ -15,6 +15,7 @@ public class IntruderInStream extends Stream {
     private HashMap<Integer, Object> int2ObjectMap = new HashMap<Integer, Object>();
     private int readItem = 0;
     private volatile boolean finish = false;
+    private boolean useHandle = false;
     public IntruderInStream(Endpoint ep) throws IOException {
         super(ep);
         RPCService.setHost(ep.serverHost);
@@ -40,7 +41,8 @@ public class IntruderInStream extends Stream {
         if (root.getClass().isEnum()) {
             return root;
         }
-        int2ObjectMap.put(readItem, root);
+        if (useHandle)
+            int2ObjectMap.put(readItem, root);
         readItem++;
         AddressArray slots = ObjectModel.getAllReferenceSlots(root);
         Queue<Address> queue = new LinkedList<Address>();
@@ -55,14 +57,13 @@ public class IntruderInStream extends Stream {
             if (item != null) {
                 if (item.getClass() == Handle.class) {
                     obj = int2ObjectMap.get(((Handle) item).index);
-                    if (obj == null)
-                        Utils.log("null obj, readItem: " + readItem);
                     assert (obj != null);
                 } else if (item.getClass().isEnum()) {
                     obj = item;
                 } else {
                     obj = item;
-                    int2ObjectMap.put(readItem, obj);
+                    if (useHandle)
+                        int2ObjectMap.put(readItem, obj);
                 }
             }
             readItem++;

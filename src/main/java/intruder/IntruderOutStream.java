@@ -56,6 +56,7 @@ public class IntruderOutStream extends Stream{
             }
             obj2HandleMap.put(object, writtenItem);
         }
+        //TODO: replace LinkedList with lightweight array
         Queue<Object> queue = new LinkedList<Object>();
         writtenItem++;
         queue.add(object);
@@ -214,14 +215,15 @@ public class IntruderOutStream extends Stream{
 
         public void fillNull() {
             int start = alignAlloc();
-            HeaderEncoding.getHeaderEncoding(addr.plus(start)).setNullType();
+            HeaderEncoding.setNullType(addr.plus(start));
             head = start + 8;
             assert(tailToHead(head) < length);
         }
 
         public void fillHandle(Handle handle) {
             int start = alignAlloc();
-            HeaderEncoding.getHeaderEncoding(addr.plus(start)).setHandleType(handle.index);
+//            HeaderEncoding.getHeaderEncoding(addr.plus(start)).setHandleType(handle.index);
+            HeaderEncoding.setHandleType(addr.plus(start), handle.index);
             head = start + 8;
             assert (tailToHead(head) < length);
         }
@@ -229,7 +231,7 @@ public class IntruderOutStream extends Stream{
         public void fillEnum(Enum e) {
             int start = alignAlloc();
             int id = Factory.query(e.getClass());
-            HeaderEncoding.getHeaderEncoding(addr.plus(start)).setEnumType(id, e.ordinal());
+            HeaderEncoding.setEnumType(addr.plus(start), id, e.ordinal());
             head = start + 8;
             assert (tailToHead(head) < length);
         }

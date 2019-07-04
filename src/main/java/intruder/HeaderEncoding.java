@@ -1,68 +1,82 @@
 package intruder;
 
+import org.vmmagic.pragma.Inline;
+import org.vmmagic.pragma.Uninterruptible;
 import org.vmmagic.unboxed.Address;
 
+@Uninterruptible
 public class HeaderEncoding {
     public static final int TYPE_OBJECT = 0;
     public static final int TYPE_NULL = 1;
     public static final int TYPE_HANDLE = 2;
-    public static final int TYPE_ENUM = 3;
-    Address address;
-    long value;
-    public HeaderEncoding(Address address) {
-        this.address = address;
-        value = address.loadLong();
-    }
-    public static HeaderEncoding getHeaderEncoding(Address address) {
-        return new HeaderEncoding(address);
-    }
+    public static final int TYPE_ENUM = 4;
 
-    public int getType() {
+    @Inline
+    public static int getType(Address addr) {
+        long value = addr.loadLong();
         return (int)(value >> 32);
     }
-    public int getID() {
+    @Inline
+    public static int getID(Address addr) {
+        long value = addr.loadLong();
         return (int)(value & ((1L << 24) - 1));
     }
-
-    public int getDimension() {
+    @Inline
+    public static int getDimension(Address addr) {
+        long value = addr.loadLong();
         return (int)((value >> 24) & (255L));
     }
-
-    public int getHandle() {
+    @Inline
+    public static  int getHandle(Address addr) {
+        long value = addr.loadLong();
         return (int)(value & ((1L << 32) - 1));
     }
-    public int getOrdinal() {
-        return getDimension();
+    @Inline
+    public static int getOrdinal(Address addr) {
+        return getDimension(addr);
     }
-    public void setObjctType(int id, int dimension) {
-        value = (long)((dimension << 24) | id) | ((long)TYPE_OBJECT) << 32;
-        address.store(value);
+    @Inline
+    public static void setObjctType(Address addr, int id, int dimension) {
+        long value = (long)((dimension << 24) | id) | ((long)TYPE_OBJECT) << 32;
+        addr.store(value);
     }
+    @Inline
+    public static void setNullType(Address addr) {
+        long value = ((long)TYPE_NULL) << 32;
+        addr.store(value);
 
-    public void setNullType() {
-        value = ((long)TYPE_NULL) << 32;
-        address.store(value);
-
     }
-    public void setHandleType(int handle) {
-        value = ((long)TYPE_HANDLE) << 32;
+    @Inline
+    public static void setHandleType(Address addr, int handle) {
+        long value = ((long)TYPE_HANDLE) << 32;
         value |= handle;
-        address.store(value);
+        addr.store(value);
     }
 
-    public void setEnumType(int id, int ordinal) {
-        value = (long)((ordinal << 24) | id) | ((long)TYPE_ENUM) << 32;
-        address.store(value);
+    @Inline
+    public static void setEnumType(Address addr, int id, int ordinal) {
+        long value = (long)((ordinal << 24) | id) | ((long)TYPE_ENUM) << 32;
+        addr.store(value);
+    }
+    @Inline
+    public static boolean isNullType(Address addr) {
+        return getType(addr) == TYPE_NULL;
+    }
+    @Inline
+    public static boolean isHandleType(Address addr) {
+        return getType(addr) == TYPE_HANDLE;
+    }
+    @Inline
+    public static boolean isEnumType(Address addr) {
+        return getType(addr) == TYPE_ENUM;
     }
 
-    public boolean isNullType() {
-        return getType() == TYPE_NULL;
+    @Inline
+    public static boolean isObjectType(Address addr) {
+        return getType(addr) == TYPE_OBJECT;
     }
-
-    public boolean isHandleType() {
-        return getType() == TYPE_HANDLE;
-    }
-    public boolean isEnumType() {
-        return getType() == TYPE_ENUM;
+    @Inline
+    public static boolean isNoneObjectType(Address addr) {
+        return (getType(addr) & 7) != 0;
     }
 }
