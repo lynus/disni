@@ -49,23 +49,27 @@ public class RPCClient {
     public void reserveBuffer(RemoteBuffer buffer) throws IOException{
         Request request = new Request(connectId, new Request.ReserveBufferREQ());
         Response response = new Response();
+        long start = System.nanoTime();
         DaRPCFuture<Request, Response> future = stream.request(request, response, false);
         while(!future.isDone()) {}
         if (response.status != Response.SUCCESS)
             throw new IOException("reserveBuffer rpc failed");
+        long end = System.nanoTime();
         Response.ReserveBufferRES msg = response.reserveBufferRES;
         buffer.setup(msg.rkey, msg.start, msg.size, this);
-        Utils.log("reserveBuffer start: " + Long.toHexString(msg.start) + " size: " + msg.size);
+        Utils.log("reserveBuffer start: " + Long.toHexString(msg.start) + " rpc time: " + (end - start));
     }
 
     public void notifyBufferLimit(long bufferStart, int limit, boolean needGap) throws IOException{
         Request request = new Request(connectId, new Request.NotifyBufferLimitREQ(bufferStart, limit, needGap));
         Response response = new Response();
+        long start = System.nanoTime();
         DaRPCFuture<Request, Response> future = stream.request(request, response, false);
         while (!future.isDone()) {}
         if (response.status != Response.SUCCESS)
             throw new IOException("notify buffer limit rpc failed");
-        Utils.log("notify buffer limit success");
+        long during = System.nanoTime() - start;
+        Utils.log("notify buffer limit success rpc time: " + during);
     }
 
     public void releaseAndReserve(RemoteBuffer buffer) throws IOException {
