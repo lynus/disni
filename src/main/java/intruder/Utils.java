@@ -155,13 +155,12 @@ public class Utils {
         for (int i = 0; i < wrN; i++)
             ep.waitEvent();
     }
-    private static boolean enableLog = true;
+    public static boolean enableLog = true;
 
     public static void disableLog() {
         enableLog = false;
     }
     public static void log(String msg) {
-        if (enableLog)
             System.err.println(msg);
     }
     public static void memcopyAligned4(Address src, Address dst, int size) {

@@ -57,7 +57,8 @@ public class RPCClient {
         long end = System.nanoTime();
         Response.ReserveBufferRES msg = response.reserveBufferRES;
         buffer.setup(msg.rkey, msg.start, msg.size, this);
-        Utils.log("reserveBuffer start: " + Long.toHexString(msg.start) + " rpc time: " + (end - start));
+        if (Utils.enableLog)
+            Utils.log("reserveBuffer start: " + Long.toHexString(msg.start) + " rpc time: " + (end - start));
     }
 
     public void notifyBufferLimit(long bufferStart, int limit, boolean needGap) throws IOException{
@@ -69,7 +70,8 @@ public class RPCClient {
         if (response.status != Response.SUCCESS)
             throw new IOException("notify buffer limit rpc failed");
         long during = System.nanoTime() - start;
-        Utils.log("notify buffer limit success rpc time: " + during);
+        if (Utils.enableLog)
+            Utils.log("notify buffer limit success rpc time: " + during);
     }
 
     public void releaseAndReserve(RemoteBuffer buffer) throws IOException {
@@ -81,7 +83,8 @@ public class RPCClient {
             throw new IOException("release_and_reserve rpc failed");
         Response.ReleaseAndReserveRES msg = response.releaseAndReserveRES;
         buffer.setup(msg.rkey, msg.start, msg.size, this);
-        Utils.log("release_and_reserve success");
+        if (Utils.enableLog)
+            Utils.log("release_and_reserve success");
     }
     public void waitRemoteFinish() throws IOException {
         Request request = new Request(connectId, new Request.WaitFinishREQ());

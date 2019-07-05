@@ -9,8 +9,6 @@ import org.vmmagic.unboxed.Address;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Queue;
 
 public class IntruderOutStream extends Stream{
     private RemoteBuffer remoteBuffer;
@@ -18,7 +16,8 @@ public class IntruderOutStream extends Stream{
     private RingBuffer ringBuffer;
     private HashMap<Object, Integer> obj2HandleMap = new HashMap<Object, Integer>();
     private int writtenItem = 0;
-    private boolean useHandle = true;
+    private boolean useHandle = false;
+    private intruder.Queue queue = new intruder.Queue(512);
     public IntruderOutStream(Endpoint ep) throws IOException{
         super(ep);
         rpcClient = new RPCClient(connectionId);
@@ -26,7 +25,8 @@ public class IntruderOutStream extends Stream{
             Thread.sleep(100);
         } catch (InterruptedException ex){}
         rpcClient.connect(ep.serverHost);
-        Utils.log("rpc client connected!");
+        if (Utils.enableLog)
+            Utils.log("rpc client connected!");
         remoteBuffer = RemoteBuffer.reserveBuffer(rpcClient, ep);
         ringBuffer = new RingBuffer(1 << 20);
     }
@@ -42,8 +42,6 @@ public class IntruderOutStream extends Stream{
     }
 
     public void writeObject(Object object) throws IOException {
-        if (Factory.query(object.getClass()) == -1)
-            throw new IOException("type not registered: " + object.getClass().getCanonicalName());
         if (object.getClass().isEnum()) {
             fillEnum((Enum)object);
             return;
@@ -57,7 +55,6 @@ public class IntruderOutStream extends Stream{
             obj2HandleMap.put(object, writtenItem);
         }
         //TODO: replace LinkedList with lightweight array
-        Queue<Object> queue = new LinkedList<Object>();
         writtenItem++;
         queue.add(object);
         while (queue.size() != 0) {
@@ -115,8 +112,10 @@ public class IntruderOutStream extends Stream{
                 continue;
             }
             if (reserved > remoteBuffer.freeSpace()) {
-                Utils.log("remotebuffer freespace: " + remoteBuffer.freeSpace());
-                Utils.log("ring buffer reserve: " + reserved);
+                if (Utils.enableLog) {
+                    Utils.log("remotebuffer freespace: " + remoteBuffer.freeSpace());
+                    Utils.log("ring buffer reserve: " + reserved);
+                }
                 ringBuffer.flush(true);
                 continue;
             }
@@ -250,15 +249,12 @@ public class IntruderOutStream extends Stream{
         }
 
         public void flush(boolean allocRemoteBuffer) throws IOException{
-            if (head == tail) {
-                Utils.log("warn:ringBuffer head == tail " + head);
-            } else {
-                if (head < tail) {
-                    remoteBuffer.writeWarp(addr.plus(tail), length - tail + 1, addr, head, lkey);
-                } else
-                    remoteBuffer.write(addr.plus(tail), head - tail, lkey);
-                reset();
-            }
+            if (head < tail) {
+                remoteBuffer.writeWarp(addr.plus(tail), length - tail + 1, addr, head, lkey);
+            } else
+                remoteBuffer.write(addr.plus(tail), head - tail, lkey);
+            reset();
+
             remoteBuffer.notifyLimit();
             if (allocRemoteBuffer)
                 remoteBuffer.reserve();

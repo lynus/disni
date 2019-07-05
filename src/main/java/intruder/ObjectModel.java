@@ -82,8 +82,6 @@ public class ObjectModel {
     @Inline
     public static void setRegisteredID(Object object, Address start) {
         int id = Factory.query(object.getClass());
-        if (id == -1)
-            Utils.log("setRegister class: " + object.getClass().getCanonicalName());
         assert(id != -1);
         int dimension = getDimension(object);
         HeaderEncoding.setObjctType(start, id, dimension);
