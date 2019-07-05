@@ -13,7 +13,11 @@ public class RPCClient {
     private DaRPCClientEndpoint<Request,Response> rpcEp;
     private DaRPCStream<Request, Response> stream;
     private int connectId;
-
+    private int notifyTimes = 0, reserveTimes = 0;
+    private boolean startCount;
+    public void startCount() {
+        this.startCount = true;
+    }
     public RPCClient(int connectId) {
         System.err.println("new rpcclient id "+connectId);
         this.connectId = connectId;
@@ -47,6 +51,8 @@ public class RPCClient {
         stream = rpcEp.createStream();
     }
     public void reserveBuffer(RemoteBuffer buffer) throws IOException{
+        if (startCount)
+            reserveTimes++;
         Request request = new Request(connectId, new Request.ReserveBufferREQ());
         Response response = new Response();
         long start = System.nanoTime();
@@ -62,6 +68,8 @@ public class RPCClient {
     }
 
     public void notifyBufferLimit(long bufferStart, int limit, boolean needGap) throws IOException{
+        if (startCount)
+            notifyTimes++;
         Request request = new Request(connectId, new Request.NotifyBufferLimitREQ(bufferStart, limit, needGap));
         Response response = new Response();
         long start = System.nanoTime();
@@ -93,6 +101,13 @@ public class RPCClient {
         while (!future.isDone()) {}
         if (response.status != Response.SUCCESS)
             throw new IOException("wait finish rpc failed");
+    }
+
+    public int getNotifyTimes() {
+        return notifyTimes;
+    }
+    public int getReserveTimes() {
+        return reserveTimes;
     }
 
 }

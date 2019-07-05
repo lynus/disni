@@ -54,13 +54,19 @@ public class ObjectModel {
     }
     @Inline
     public static int getAlignedUpSize(Object obj) {
-        return getAlignedUpSize(obj.getClass(), getObjectHeaderAddress(obj));
+        RVMType type = Magic.getObjectType(obj);
+        if (type.isClassType()) {
+            return (type.asClass().getInstanceSize() + (MIN_ALIGNMENT - 1)) & ~(MIN_ALIGNMENT - 1);
+        } else {
+            int ele_num = (int)Magic.objectAsAddress(obj).minus(8).loadLong();
+            return type.asArray().getInstanceSize(ele_num) + (MIN_ALIGNMENT -1) & ~(MIN_ALIGNMENT -1);
+        }
     }
     @Inline
     public static int getMaximumAlignedSize(Object obj) {
         //for x86-64, alignment is 8, MIN_ALIGNMENT is 4.
         //see org.mmtk.utility.alloc.Allocator.getMaximumAlignedSize()
-        return getAlignedUpSize(obj) + 8 - 4;
+        return getAlignedUpSize(obj) + 4;
     }
 
     @Inline
@@ -161,24 +167,24 @@ public class ObjectModel {
 
     //see SpecializedScanMethod.fallback()
     @Inline
-    public static Object[] getAllReferences(Object object) {
+    public static int getAllReferences(Object object, Object[] refArray) {
         Address base = Magic.objectAsAddress(object);
-        RVMType type = getType(object.getClass());
-        Object[] ret;
+        RVMType type = Magic.getObjectType(object);
         int[] offsets = type.getReferenceOffsets();
+        int length;
         if (offsets == REFARRAY_OFFSET_ARRAY) {
-            ret = new Object[getArrayLength(object)];
-            for (int i = 0; i < getArrayLength(object); i++) {
+            length = getArrayLength(object);
+            for (int i = 0; i < length; i++) {
                 Object obj = base.plus(i << 3).loadObjectReference().toObject();
-                ret[i] = obj;
+                refArray[i] = obj;
             }
         } else {
-            ret = new Object[offsets.length];
-            for (int i = 0; i < offsets.length; i++) {
-                ret[i] = base.plus(offsets[i]).loadObjectReference().toObject();
+            length = offsets.length;
+            for (int i = 0; i < length; i++) {
+                refArray[i] = base.plus(offsets[i]).loadObjectReference().toObject();
             }
         }
-        return ret;
+        return length;
     }
     @Inline
     public static AddressArray getAllReferenceSlots(Object object) {

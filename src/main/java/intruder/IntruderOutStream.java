@@ -18,6 +18,7 @@ public class IntruderOutStream extends Stream{
     private int writtenItem = 0;
     private boolean useHandle = false;
     private intruder.Queue queue = new intruder.Queue(512);
+    private Object[] refArray = new Object[32];
     public IntruderOutStream(Endpoint ep) throws IOException{
         super(ep);
         rpcClient = new RPCClient(connectionId);
@@ -40,7 +41,12 @@ public class IntruderOutStream extends Stream{
     public void waitRemoteFinish() throws IOException{
         rpcClient.waitRemoteFinish();
     }
-
+    public void startRPCCount() {
+        rpcClient.startCount();
+    }
+    public String rpcCountReport() {
+        return "rpc count, reserve: " + rpcClient.getReserveTimes() + " notify: " + rpcClient.getNotifyTimes();
+    }
     public void writeObject(Object object) throws IOException {
         if (object.getClass().isEnum()) {
             fillEnum((Enum)object);
@@ -63,18 +69,20 @@ public class IntruderOutStream extends Stream{
                 fillNull();
                 continue;
             }
-            if (object.getClass() == Handle.class) {
-                assert(useHandle);
-                fillHandle((Handle)object);
-                continue;
+            if (useHandle) {
+                if (object.getClass() == Handle.class) {
+                    fillHandle((Handle) object);
+                    continue;
+                }
             }
             if (object.getClass().isEnum()) {
                 fillEnum((Enum)object);
                 continue;
             }
             fill(object);
-            Object[] refs = ObjectModel.getAllReferences(object);
-            for (Object o : refs) {
+            int reflen = ObjectModel.getAllReferences(object, refArray);
+            for (int i = 0; i < reflen; i++) {
+                Object o = refArray[i];
                 if (o == null) {
                     queue.add(null);
                 } else if (!useHandle) {
