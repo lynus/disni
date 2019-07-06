@@ -55,6 +55,9 @@ public class RPCClient {
             reserveTimes++;
         Request request = new Request(connectId, new Request.ReserveBufferREQ());
         Response response = new Response();
+        if (Utils.enableLog) {
+            Utils.log("reserve rpc begin");
+        }
         long start = System.nanoTime();
         DaRPCFuture<Request, Response> future = stream.request(request, response, false);
         while(!future.isDone()) {}

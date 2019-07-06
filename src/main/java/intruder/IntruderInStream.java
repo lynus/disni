@@ -12,6 +12,7 @@ import java.util.Queue;
 
 public class IntruderInStream extends Stream {
     private LocalBuffer firstBuffer, lastBuffer, currentBuffer;
+    public LocalBuffer retireBuffer;
     private HashMap<Integer, Object> int2ObjectMap = new HashMap<Integer, Object>();
     private int readItem = 0;
     private volatile boolean finish = false;
@@ -25,6 +26,11 @@ public class IntruderInStream extends Stream {
     public Object readObject() throws IOException {
         while(currentBuffer == null) {}
         LocalBuffer.AddrBufferRet ret = LocalBuffer.getNextAddr(currentBuffer);
+//        if (currentBuffer != ret.getLocalBuffer()) {
+//            System.err.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+//            retireBuffer.release();
+//            retireBuffer  = currentBuffer;
+//        }
         currentBuffer = ret.getLocalBuffer();
         Address header = ret.getAddr();
 //        Utils.log("get header address: 0x" + Long.toHexString(header.toLong()));
@@ -51,6 +57,12 @@ public class IntruderInStream extends Stream {
         while (queue.size() != 0) {
             Address slot = queue.remove();
             ret = LocalBuffer.getNextAddr(currentBuffer);
+            //TODO: release the block prior to currentBuffer, we need decent block release implementation
+            if (currentBuffer != ret.getLocalBuffer()) {
+                if (retireBuffer != null)
+                    retireBuffer.release();
+                retireBuffer  = currentBuffer;
+            }
             currentBuffer = ret.getLocalBuffer();
             Object item = ObjectModel.initializeHeader(ret.getAddr());
             Object obj = null;
@@ -83,6 +95,7 @@ public class IntruderInStream extends Stream {
     public LocalBuffer getLocalBuffer() {
         LocalBuffer _buffer = new LocalBuffer();
         if (firstBuffer == null) {
+            retireBuffer = null;
             firstBuffer = _buffer;
             lastBuffer = _buffer;
             currentBuffer = _buffer;

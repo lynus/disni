@@ -1,6 +1,7 @@
 package intruder;
 
 import com.ibm.disni.verbs.IbvMr;
+import org.mmtk.policy.SegregatedFreeListSpace;
 import org.vmmagic.unboxed.Address;
 
 import java.io.IOException;
@@ -44,6 +45,12 @@ public class LocalBuffer extends Buffer {
     }
     public void markConsumed() {
         consumed = true;
+    }
+    public void release() {
+        if (Utils.enableLog)
+            Utils.log("Localbuffer release addr: 0x " + Long.toHexString(start.toLong()));
+        nextBuffer = null;
+        ((SegregatedFreeListSpace)space).releaseMixedBlock(start);
     }
    
     public static AddrBufferRet getNextAddr(LocalBuffer buffer) {

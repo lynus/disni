@@ -13,7 +13,7 @@ import java.lang.reflect.Field;
 
 public class Buffer {
     private static int MIN_ALIGN;
-    private static Space space = Plan.nonMovingSpace;
+    protected static Space space = Plan.nonMovingSpace;
     protected Address start;
     protected Extent length;
     protected Offset limit = Offset.fromIntSignExtend(-1);
@@ -32,7 +32,7 @@ public class Buffer {
         buffer.start = region;
         buffer.length = Extent.fromIntZeroExtend(MIN_ALIGN);
         if (Utils.enableLog)
-            Utils.log("get buffer start: "+region.toLong()+" log size:(k) "+ (buffer.length.toInt() >> 10));
+            Utils.log("get buffer start: "+ Long.toHexString(region.toLong())+" log size:(k) "+ (buffer.length.toInt() >> 10));
         return buffer;
     }
 
