@@ -50,8 +50,8 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
 
     //argument cls can be both array or scalar class
     static public int query(Class cls) {
-        cls = ObjectModel.getInnerMostEleType(cls);
-        return idManager.query(cls);
+        RVMType type = ObjectModel.getInnerMostEleType(cls);
+        return idManager.query(type);
     }
 
     static public Enum query(int id, int ordinal) {

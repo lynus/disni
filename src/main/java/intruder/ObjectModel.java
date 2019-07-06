@@ -76,8 +76,20 @@ public class ObjectModel {
     }
     //skip over header
     @Inline
-    public static void copyObject(Object object, Address start) {
-        Memory.memcopy(start.plus(HEADER_SIZE), getObjectHeaderAddress(object).plus(HEADER_SIZE), getAlignedUpSize(object) - HEADER_SIZE);
+    public static int copyObject(Object object, Address start) {
+        int ret = getAlignedUpSize(object);
+        memcopy(start.plus(HEADER_SIZE), getObjectHeaderAddress(object).plus(HEADER_SIZE), ret - HEADER_SIZE);
+        return ret;
+    }
+
+    @Inline
+    private static void memcopy(Address dst, Address src, int size) {
+        Address end = src.plus(size);
+        while (src.LT(end)) {
+            dst.store(src.loadInt());
+            src = src.plus(4);
+            dst = dst.plus(4);
+        }
     }
     // -1 for primitives; 0 for classes
     @Inline
@@ -136,12 +148,12 @@ public class ObjectModel {
         return ret;
     }
     @Inline
-    public static Class getInnerMostEleType(Class cls) {
+    public static RVMType getInnerMostEleType(Class cls) {
         RVMType type = getType(cls);
         if (type.isClassType())
-            return cls;
+            return type;
         RVMArray array = type.asArray();
-        return array.getInnermostElementType().getClassForType();
+        return array.getInnermostElementType();
     }
     @Inline
     public static Class getClassByHeader(Address header) {

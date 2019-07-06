@@ -1,18 +1,18 @@
 package intruder;
 
-import org.jikesrvm.classloader.RVMArray;
 import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
+import org.jikesrvm.util.ImmutableEntryHashMapRVM;
 import org.vmmagic.pragma.Inline;
 
 import java.lang.reflect.Method;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RdmaClassIdManager{
-    private ConcurrentHashMap<RVMType, Integer> classToIdMap = new ConcurrentHashMap<RVMType, Integer>();
-    private ConcurrentHashMap<Integer, RVMType> idToClassMap = new ConcurrentHashMap<Integer, RVMType>();
-    private ConcurrentHashMap<Integer, Enum[]> idToEnumArray = new ConcurrentHashMap<Integer, Enum[]>();
+    private ImmutableEntryHashMapRVM<RVMType, Integer> classToIdMap = new ImmutableEntryHashMapRVM<RVMType, Integer>(32);
+    private HashMap<Integer, RVMType> idToClassMap = new HashMap<Integer, RVMType>();
+    private HashMap<Integer, Enum[]> idToEnumArray = new HashMap<Integer, Enum[]>();
     private AtomicInteger counter;
     static public final int ARRAYTYPEMASK = 1 << 31;
     static public final int SCALARTYPEMASK = ~ARRAYTYPEMASK;
@@ -69,11 +69,8 @@ public class RdmaClassIdManager{
         return ret;
     }
 
-    public int query(Class cls) {
+    public int query(RVMType type) {
         Integer ret;
-        RVMType type = java.lang.JikesRVMSupport.getTypeForClass(cls);
-        if (type == null)
-            return -1;
         ret = classToIdMap.get(type);
         if (ret != null)
             return ret.intValue();

@@ -189,7 +189,7 @@ public class IntruderOutStream extends Stream{
 
     private class RingBuffer {
         public ByteBuffer buffer;
-        private int tail, head, length;
+        private int head, length;
         private Address addr;
         private int lkey, rkey;
         public RingBuffer() throws IOException{
@@ -203,12 +203,13 @@ public class IntruderOutStream extends Stream{
             lkey = mr.getLkey();
             rkey = mr.getRkey();
         }
-
+        @Inline
         public int reserve(int size) {
             //we should avoid the situation where the ring buffer is full, which leads to head == tail.
-            if (tailToHead() + size >= length)
+            int reserved = head + size;
+            if (reserved >= length)
                 return -1;
-            return tailToHead() + size;
+            return reserved;
         }
         @Inline
         private int alignAlloc() {
@@ -224,7 +225,7 @@ public class IntruderOutStream extends Stream{
             int start = alignAlloc();
             HeaderEncoding.setNullType(addr.plus(start));
             head = start + 8;
-            assert(tailToHead(head) < length);
+            assert(head < length);
         }
 
         public void fillHandle(Handle handle) {
@@ -232,7 +233,7 @@ public class IntruderOutStream extends Stream{
 //            HeaderEncoding.getHeaderEncoding(addr.plus(start)).setHandleType(handle.index);
             HeaderEncoding.setHandleType(addr.plus(start), handle.index);
             head = start + 8;
-            assert (tailToHead(head) < length);
+            assert (head < length);
         }
 
         public void fillEnum(Enum e) {
@@ -240,7 +241,7 @@ public class IntruderOutStream extends Stream{
             int id = Factory.query(e.getClass());
             HeaderEncoding.setEnumType(addr.plus(start), id, e.ordinal());
             head = start + 8;
-            assert (tailToHead(head) < length);
+            assert (head < length);
         }
 
         //copy all primitive slots and returns all reference slots.
@@ -250,42 +251,28 @@ public class IntruderOutStream extends Stream{
             //改写头部数据:将TIB指针改为类注册ID;status的部分留给接收端处理
             //填充padding
             int start = alignAlloc();
-            ObjectModel.copyObject(object, addr.plus(start));
+            int size = ObjectModel.copyObject(object, addr.plus(start));
             ObjectModel.setRegisteredID(object, addr.plus(start));
-            head = start + ObjectModel.getAlignedUpSize(object);
-            assert(tailToHead(head) < length);
+            head = start + size;
+            assert(head < length);
         }
 
         public void flush(boolean allocRemoteBuffer) throws IOException{
-            if (head < tail) {
-                remoteBuffer.writeWarp(addr.plus(tail), length - tail + 1, addr, head, lkey);
-            } else
-                remoteBuffer.write(addr.plus(tail), head - tail, lkey);
+            remoteBuffer.write(addr, head, lkey);
             reset();
-
             remoteBuffer.notifyLimit();
             if (allocRemoteBuffer)
                 remoteBuffer.reserve();
         }
 
-        private int tailToHead(int head) {
-            if (head >= tail) return head - tail;
-            return head + length - tail;
-        }
-
-        private int tailToHead() {
-            if (head >= tail) return head - tail;
-            return head + length - tail;
-        }
         private void reset() {
 	        Utils.zeroMemory(addr, length);
-            tail = head = 0;
+            head = 0;
         }
 
         public void printStats() {
             Utils.log("=========ring buffer stats========");
-            Utils.log("head: " + head + "  tail: " + tail);
-            Utils.log("current size: " + tailToHead() + "left: " + (length - tailToHead()));
+            Utils.log("current size: " + head + "left: " + (length - head));
             Utils.log("==================================");
         }
 
