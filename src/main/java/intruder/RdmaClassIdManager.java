@@ -2,7 +2,7 @@ package intruder;
 
 import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
-import org.jikesrvm.util.ImmutableEntryHashMapRVM;
+import org.jikesrvm.runtime.Magic;
 import org.vmmagic.pragma.Inline;
 
 import java.lang.reflect.Method;
@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RdmaClassIdManager{
-    private ImmutableEntryHashMapRVM<RVMType, Integer> classToIdMap = new ImmutableEntryHashMapRVM<RVMType, Integer>(32);
+    private SimpleRVMTypeHashTable classToIdMap = new SimpleRVMTypeHashTable();
     private HashMap<Integer, RVMType> idToClassMap = new HashMap<Integer, RVMType>();
     private HashMap<Integer, Enum[]> idToEnumArray = new HashMap<Integer, Enum[]>();
     private AtomicInteger counter;
@@ -19,15 +19,20 @@ public class RdmaClassIdManager{
     static public final int ARRAYTYPE = 1 << 31;
     static public final int NONARRAYTYPE = 0;
     public RdmaClassIdManager () {
-        classToIdMap.put(RVMType.BooleanType, Integer.valueOf(0));
-        classToIdMap.put(RVMType.ByteType, Integer.valueOf(1));
-        classToIdMap.put(RVMType.ShortType, Integer.valueOf(2));
-        classToIdMap.put(RVMType.IntType, Integer.valueOf(3));
-        classToIdMap.put(RVMType.LongType, Integer.valueOf(4));
-        classToIdMap.put(RVMType.FloatType, Integer.valueOf(5));
-        classToIdMap.put(RVMType.DoubleType, Integer.valueOf(6));
-        classToIdMap.put(RVMType.CharType, Integer.valueOf(7));
-        classToIdMap.put(RVMType.JavaLangStringType, Integer.valueOf(8));
+        try {
+            classToIdMap.put(RVMType.BooleanType, Integer.valueOf(0));
+            classToIdMap.put(RVMType.ByteType, Integer.valueOf(1));
+            classToIdMap.put(RVMType.ShortType, Integer.valueOf(2));
+            classToIdMap.put(RVMType.IntType, Integer.valueOf(3));
+            classToIdMap.put(RVMType.LongType, Integer.valueOf(4));
+            classToIdMap.put(RVMType.FloatType, Integer.valueOf(5));
+            classToIdMap.put(RVMType.DoubleType, Integer.valueOf(6));
+            classToIdMap.put(RVMType.CharType, Integer.valueOf(7));
+            classToIdMap.put(RVMType.JavaLangStringType, Integer.valueOf(8));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            System.exit(1);
+        }
         counter = new AtomicInteger(9);
 
         idToClassMap.put(Integer.valueOf(0), RVMType.BooleanType);
@@ -41,17 +46,22 @@ public class RdmaClassIdManager{
         idToClassMap.put(Integer.valueOf(8), RVMType.JavaLangStringType);
     }
     public int registerClass(Class cls) {
-        Integer ret;
+        int ret;
         String className = cls.getCanonicalName();
         if (Utils.enableLog)
             Utils.log("registerClass get name: " + className);
         RVMType type = java.lang.JikesRVMSupport.getTypeForClass(cls);
         ret = classToIdMap.get(type);
-        if (ret != null)
-            return ret.intValue();
+        if (ret != -1)
+            return ret;
 
         ret = counter.getAndIncrement();
-        classToIdMap.put(type, ret);
+        try {
+            classToIdMap.put(type, ret);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            System.exit(1);
+        }
         idToClassMap.put(ret, type);
         //XXX assume a scalar type registered
         Utils.ensureClassInitialized((RVMClass)type);
@@ -70,12 +80,7 @@ public class RdmaClassIdManager{
     }
 
     public int query(RVMType type) {
-        Integer ret;
-        ret = classToIdMap.get(type);
-        if (ret != null)
-            return ret.intValue();
-        else
-            return -1;
+        return classToIdMap.get(type);
     }
 
     public RVMType query(int id) {
@@ -90,5 +95,42 @@ public class RdmaClassIdManager{
     @Inline
     public static RVMType getRvmtype(Class cls) {
         return java.lang.JikesRVMSupport.getTypeForClass(cls);
+    }
+
+    private static class SimpleRVMTypeHashTable {
+        private final int SIZE = 512, MAXCOLI = 8;
+        private final int KEY = 0, VALUE = 1;
+        private int[][][] table = new int[SIZE][MAXCOLI][2];
+        public void put(RVMType type, Integer id) throws Exception{
+            int key = hash(type);
+            int d1 = key & (SIZE - 1);
+            int d2;
+            for (d2 = 0; d2 < MAXCOLI; d2++) {
+                if (table[d1][d2][KEY] == 0) {
+                    table[d1][d2][KEY]= key;
+                    table[d1][d2][VALUE]= id;
+                    break;
+                }
+            }
+            if (d2 == MAXCOLI) throw new Exception("MAXCOLISION");
+        }
+        public int get(RVMType type) {
+            int key = hash(type);
+            int d1 = key & (SIZE - 1);
+            for (int d2 = 0; d2 < MAXCOLI; d2++) {
+                if (table[d1][d2][KEY] == 0) {
+                    return -1;
+                }
+                if (table[d1][d2][KEY] == key) {
+                    return table[d1][d2][VALUE];
+                }
+            }
+            return -1;
+        }
+
+        private int hash(RVMType type) {
+            return Magic.objectAsAddress(type).toInt();
+        }
+
     }
 }
