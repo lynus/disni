@@ -7,8 +7,6 @@ import org.vmmagic.unboxed.ObjectReference;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Queue;
 
 public class IntruderInStream extends Stream {
     private LocalBuffer firstBuffer, lastBuffer, currentBuffer;
@@ -17,6 +15,9 @@ public class IntruderInStream extends Stream {
     private int readItem = 0;
     private volatile boolean finish = false;
     private boolean useHandle = false;
+    private LocalBuffer.AddrBufferRet _ret = new LocalBuffer.AddrBufferRet();
+    private AddressArray slots = AddressArray.create(64);
+    private intruder.Queue queue = new intruder.Queue(512);
     public IntruderInStream(Endpoint ep) throws IOException {
         super(ep);
         RPCService.setHost(ep.serverHost);
@@ -25,24 +26,21 @@ public class IntruderInStream extends Stream {
 
     public Object readObject() throws IOException {
         while(currentBuffer == null) {}
-        LocalBuffer.AddrBufferRet ret = LocalBuffer.getNextAddr(currentBuffer);
-//        if (currentBuffer != ret.getLocalBuffer()) {
-//            System.err.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-//            retireBuffer.release();
-//            retireBuffer  = currentBuffer;
-//        }
-        currentBuffer = ret.getLocalBuffer();
-        Address header = ret.getAddr();
+        LocalBuffer.getNextAddr(currentBuffer, _ret);
+        currentBuffer = _ret.getLocalBuffer();
+        Address header = _ret.getAddr();
 //        Utils.log("get header address: 0x" + Long.toHexString(header.toLong()));
         /*设定header
           VM 部分 TIB status（lock，hash status)
           GC 部分
         */
         Object root = ObjectModel.initializeHeader(header);
-        if (root.getClass() == Handle.class) {
-            root = int2ObjectMap.get(((Handle) root).index);
-            assert(root != null);
-            return root;
+        if (useHandle) {
+            if (root.getClass() == Handle.class) {
+                root = int2ObjectMap.get(((Handle) root).index);
+                assert (root != null);
+                return root;
+            }
         }
         if (root.getClass().isEnum()) {
             return root;
@@ -50,21 +48,26 @@ public class IntruderInStream extends Stream {
         if (useHandle)
             int2ObjectMap.put(readItem, root);
         readItem++;
-        AddressArray slots = ObjectModel.getAllReferenceSlots(root);
-        Queue<Address> queue = new LinkedList<Address>();
-        for (int i = 0; i < slots.length(); i++)
-            queue.add(slots.get(i));
+        ObjectModel.getAllReferenceSlots(root, slots);
+        int i = 0;
+        while (true) {
+            Address addr = slots.get(i);
+            if (addr.isZero())
+                break;
+            queue.add(addr);
+            i++;
+        }
         while (queue.size() != 0) {
-            Address slot = queue.remove();
-            ret = LocalBuffer.getNextAddr(currentBuffer);
+            Address slot = queue.removeAddress();
+            LocalBuffer.getNextAddr(currentBuffer, _ret);
             //TODO: release the block prior to currentBuffer, we need decent block release implementation
-            if (currentBuffer != ret.getLocalBuffer()) {
+            if (currentBuffer != _ret.getLocalBuffer()) {
                 if (retireBuffer != null)
                     retireBuffer.release();
                 retireBuffer  = currentBuffer;
             }
-            currentBuffer = ret.getLocalBuffer();
-            Object item = ObjectModel.initializeHeader(ret.getAddr());
+            currentBuffer = _ret.getLocalBuffer();
+            Object item = ObjectModel.initializeHeader(_ret.getAddr());
             Object obj = null;
             if (item != null) {
                 if (item.getClass() == Handle.class) {
@@ -82,9 +85,15 @@ public class IntruderInStream extends Stream {
             slot.store(ObjectReference.fromObject(obj).toAddress().toLong());
             if (obj == null || item.getClass() == Handle.class || item.getClass().isEnum())
                 continue;
-            slots = ObjectModel.getAllReferenceSlots(obj);
-            for (int i = 0; i < slots.length(); i++)
-                queue.add(slots.get(i));
+            ObjectModel.getAllReferenceSlots(obj, slots);
+            i = 0;
+            while (true) {
+                Address addr = slots.get(i);
+                if (addr.isZero())
+                    break;
+                queue.add(addr);
+                i++;
+            }
         }
         return root;
     }

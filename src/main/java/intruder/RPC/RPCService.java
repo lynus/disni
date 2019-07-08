@@ -88,10 +88,12 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 }
                 buffer.setLimit(limit, needGap);
                 response.setNotifyBufferLimitRES(new Response.NotifyBufferLimitRES());
-                if (needGap)
-                    Utils.log("rpc limit: " + limit + " gap filled");
-                else
-                    Utils.log("rpc limit: " + limit);
+                if (Utils.enableLog) {
+                    if (needGap)
+                        Utils.log("rpc limit: " + limit + " gap filled");
+                    else
+                        Utils.log("rpc limit: " + limit);
+                }
                 //buffer.peekBytes(0, 64, 3);
                 break;
             case Request.RELEASE_AND_RESERVE_CMD:

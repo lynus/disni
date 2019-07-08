@@ -6,7 +6,6 @@ import org.jikesrvm.classloader.RVMType;
 import org.jikesrvm.objectmodel.JavaHeader;
 import org.jikesrvm.objectmodel.TIB;
 import org.jikesrvm.runtime.Magic;
-import org.jikesrvm.runtime.Memory;
 import org.mmtk.utility.Constants;
 import org.vmmagic.pragma.Inline;
 import org.vmmagic.pragma.Uninterruptible;
@@ -36,21 +35,13 @@ public class ObjectModel {
         return Magic.objectAsAddress(obj).minus(REF_OFFSET);
     }
     @Inline
-    public static int getInstanceSize(Class cls, Address header) {
-        RVMType type = java.lang.JikesRVMSupport.getTypeForClass(cls);
+    public static int getAlignedUpSize(RVMType type, Address header) {
         if (type.isClassType()) {
-            RVMClass rvmcls = type.asClass();
-            return rvmcls.getInstanceSize();
+            return (type.asClass().getInstanceSize() + (MIN_ALIGNMENT - 1)) & ~(MIN_ALIGNMENT - 1);
+        } else {
+            int ele_num = (int)header.plus(ELEMENT_NUM_OFFSET).loadLong();
+            return type.asArray().getInstanceSize(ele_num) + (MIN_ALIGNMENT -1) & ~(MIN_ALIGNMENT -1);
         }
-        assert(type.isArrayType());
-        int ele_num = (int)header.plus(ELEMENT_NUM_OFFSET).loadLong();
-        RVMArray array = type.asArray();
-        return array.getInstanceSize(ele_num);
-    }
-    @Inline
-    public static int getAlignedUpSize(Class cls, Address header) {
-        int size = getInstanceSize(cls, header);
-        return org.jikesrvm.runtime.Memory.alignUp(size, MIN_ALIGNMENT);
     }
     @Inline
     public static int getAlignedUpSize(Object obj) {
@@ -119,8 +110,7 @@ public class ObjectModel {
         if (_type == HeaderEncoding.TYPE_ENUM) {
             return getEnumByHeader(ptr);
         }
-        Class cls = getClassByHeader(ptr);
-        RVMType type = getType(cls);
+        RVMType type = getClassByHeader(ptr);
         TIB tib;
         if (type.isClassType()) {
             tib = type.asClass().getTypeInformationBlock();
@@ -156,14 +146,14 @@ public class ObjectModel {
         return array.getInnermostElementType();
     }
     @Inline
-    public static Class getClassByHeader(Address header) {
+    public static RVMType getClassByHeader(Address header) {
         int id = HeaderEncoding.getID(header);
         int dimension = HeaderEncoding.getDimension(header);
-        Class cls = Factory.query(id);
-        assert(cls != null);
+        RVMType type = Factory.query(id);
+        assert(type != null);
         if (dimension == 0)
-            return cls;
-        return getNDimensionArrayType(getType(cls), dimension).getClassForType();
+            return type;
+        return getNDimensionArrayType(type, dimension);
     }
     @Inline
     public static Enum getEnumByHeader(Address header) {
@@ -199,23 +189,23 @@ public class ObjectModel {
         return length;
     }
     @Inline
-    public static AddressArray getAllReferenceSlots(Object object) {
+    public static AddressArray getAllReferenceSlots(Object object, AddressArray slots) {
         Address base = Magic.objectAsAddress(object);
-        RVMType type = getType(object.getClass());
-        AddressArray ret;
+        RVMType type = Magic.getObjectType(object);
         int[] offsets = type.getReferenceOffsets();
         if (offsets == REFARRAY_OFFSET_ARRAY) {
-            ret = AddressArray.create(getArrayLength(object));
-            for (int i = 0; i < getArrayLength(object); i++) {
-                ret.set(i, base.plus(i << 3));
+            int length = getArrayLength(object);
+            for (int i = 0; i < length; i++) {
+                slots.set(i, base.plus(i << 3));
             }
+            slots.set(length, Address.zero());
         } else {
-            ret = AddressArray.create(offsets.length);
             for (int i = 0; i < offsets.length; i++) {
-                ret.set(i, base.plus(offsets[i]));
+                slots.set(i, base.plus(offsets[i]));
             }
+            slots.set(offsets.length, Address.zero());
         }
-        return ret;
+        return slots;
     }
 
     @Inline

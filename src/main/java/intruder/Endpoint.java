@@ -318,7 +318,7 @@ public class Endpoint extends RdmaActiveEndpoint {
                 throw new IOException("expected read complete get wr_id: " + wc.getWr_id());
             }
             int num = buf.getInt();
-            Class cls = Factory.query(num & SCALARTYPEMASK);
+            Class cls = Factory.query(num & SCALARTYPEMASK).getClassForType();
             System.out.println("get num of id: " + Integer.toHexString(num) + " class: " + cls.getCanonicalName());
             return num;
         }

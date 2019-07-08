@@ -25,7 +25,7 @@ public class Utils {
 
     static public RVMType ensureIdValid(int id) throws IOException {
         id = id & SCALARTYPEMASK;
-        RVMType type = java.lang.JikesRVMSupport.getTypeForClass(Factory.query(id));
+        RVMType type = Factory.query(id);
         if (type == null || !type.isInitialized()) {
             throw new IOException("class not found or not initialized!");
         }

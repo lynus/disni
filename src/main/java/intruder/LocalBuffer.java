@@ -2,6 +2,7 @@ package intruder;
 
 import com.ibm.disni.verbs.IbvMr;
 import org.mmtk.policy.SegregatedFreeListSpace;
+import org.vmmagic.pragma.Inline;
 import org.vmmagic.unboxed.Address;
 
 import java.io.IOException;
@@ -36,12 +37,9 @@ public class LocalBuffer extends Buffer {
     public void setNextBuffer(LocalBuffer buffer) {
         this.nextBuffer = buffer;
     }
-    
+    @Inline
     private boolean reachLimit() {
-        if (pointer < limit)
-            return false;
-        else 
-            return true;
+        return pointer >= limit;
     }
     public void markConsumed() {
         consumed = true;
@@ -53,9 +51,9 @@ public class LocalBuffer extends Buffer {
         ((SegregatedFreeListSpace)space).releaseMixedBlock(start);
     }
    
-    public static AddrBufferRet getNextAddr(LocalBuffer buffer) {
+    public static AddrBufferRet getNextAddr(LocalBuffer buffer, AddrBufferRet ret) {
         if (!buffer.reachLimit()) {
-            return buffer.bumpPointer();
+            return buffer.bumpPointer(ret);
         }
         assert(buffer.pointer == buffer.limit);
         while(!buffer.consumed && buffer.reachLimit()) {}
@@ -64,20 +62,20 @@ public class LocalBuffer extends Buffer {
             LocalBuffer nextBuffer = buffer.getNextBuffer();
             while (nextBuffer == null)
                 nextBuffer = buffer.getNextBuffer();
-            return getNextAddr(nextBuffer);
+            return getNextAddr(nextBuffer, ret);
         }
         //new data has filled into this buffer
-        return buffer.bumpPointer();
+        return buffer.bumpPointer(ret);
     }
 
-    private AddrBufferRet bumpPointer() {
+    private AddrBufferRet bumpPointer(AddrBufferRet ret) {
         assert((pointer & 7) == 0 || (pointer & 7) ==4);
         assert((pointer & 7) == 0 || (start.plus(pointer).loadInt() ==
               org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE));
         if ((pointer & 7) != 0)
             pointer += 4;
         Address header = start.plus(pointer);
-        AddrBufferRet ret = new AddrBufferRet(header, this);
+        ret.set(header, this);
         if (HeaderEncoding.isNoneObjectType(header)) {
             pointer += 8;
         } else {
@@ -99,11 +97,20 @@ public class LocalBuffer extends Buffer {
             this.addr = a;
             this.buffer = b;
         }
+        public AddrBufferRet() {
+        }
+        @Inline
         public Address getAddr() {
             return addr;
         }
+        @Inline
         public LocalBuffer getLocalBuffer() {
             return buffer;
+        }
+        @Inline
+        public void set(Address addr, LocalBuffer buffer) {
+            this.addr = addr;
+            this.buffer = buffer;
         }
     }
 }

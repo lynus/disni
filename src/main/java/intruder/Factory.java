@@ -16,7 +16,7 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
     static {
         try {
             self = new Factory();
-            group = new RdmaActiveEndpointGroup<Endpoint>(10, false, 64, Utils.MAXSGEPERWR, 64);
+            group = new RdmaActiveEndpointGroup<Endpoint>(100, false, 64, Utils.MAXSGEPERWR, 64);
             group.init(self);
         } catch (IOException e) {
             throw new ExceptionInInitializerError(e);
@@ -41,11 +41,8 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
     }
 
     //dimension field in the id is strip before call this method.
-    static public Class query(int id) {
-        RVMType type = idManager.query(id);
-        if (type == null)
-            return null;
-        return type.getClassForType();
+    static public RVMType query(int id) {
+        return idManager.query(id);
     }
 
     //argument cls can be both array or scalar class

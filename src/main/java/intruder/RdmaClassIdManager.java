@@ -6,13 +6,12 @@ import org.jikesrvm.runtime.Magic;
 import org.vmmagic.pragma.Inline;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RdmaClassIdManager{
     private SimpleRVMTypeHashTable classToIdMap = new SimpleRVMTypeHashTable();
-    private HashMap<Integer, RVMType> idToClassMap = new HashMap<Integer, RVMType>();
-    private HashMap<Integer, Enum[]> idToEnumArray = new HashMap<Integer, Enum[]>();
+    private RVMType[] idToClassMap = new RVMType[512];
+    private Enum[][] idToEnumArray = new Enum[512][];
     private AtomicInteger counter;
     static public final int ARRAYTYPEMASK = 1 << 31;
     static public final int SCALARTYPEMASK = ~ARRAYTYPEMASK;
@@ -35,15 +34,15 @@ public class RdmaClassIdManager{
         }
         counter = new AtomicInteger(9);
 
-        idToClassMap.put(Integer.valueOf(0), RVMType.BooleanType);
-        idToClassMap.put(Integer.valueOf(1), RVMType.ByteType);
-        idToClassMap.put(Integer.valueOf(2), RVMType.ShortType);
-        idToClassMap.put(Integer.valueOf(3), RVMType.IntType);
-        idToClassMap.put(Integer.valueOf(4), RVMType.LongType);
-        idToClassMap.put(Integer.valueOf(5), RVMType.FloatType);
-        idToClassMap.put(Integer.valueOf(6), RVMType.DoubleType);
-        idToClassMap.put(Integer.valueOf(7), RVMType.CharType);
-        idToClassMap.put(Integer.valueOf(8), RVMType.JavaLangStringType);
+        idToClassMap[0] = RVMType.BooleanType;
+        idToClassMap[1] = RVMType.ByteType;
+        idToClassMap[2] = RVMType.ShortType;
+        idToClassMap[3] = RVMType.IntType;
+        idToClassMap[4] = RVMType.LongType;
+        idToClassMap[5] = RVMType.FloatType;
+        idToClassMap[6] = RVMType.DoubleType;
+        idToClassMap[7] = RVMType.CharType;
+        idToClassMap[8] = RVMType.JavaLangStringType;
     }
     public int registerClass(Class cls) {
         int ret;
@@ -62,7 +61,7 @@ public class RdmaClassIdManager{
             ex.printStackTrace();
             System.exit(1);
         }
-        idToClassMap.put(ret, type);
+        idToClassMap[ret] = type;
         //XXX assume a scalar type registered
         Utils.ensureClassInitialized((RVMClass)type);
 
@@ -71,7 +70,7 @@ public class RdmaClassIdManager{
             try {
                 method = cls.getMethod("values");
                 Enum[] array = (Enum[])method.invoke(null);
-                idToEnumArray.put(ret, array);
+                idToEnumArray[ret] = array;
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -84,11 +83,11 @@ public class RdmaClassIdManager{
     }
 
     public RVMType query(int id) {
-        return idToClassMap.get(id);
+        return idToClassMap[id];
     }
 
     public Enum queryEnum(int id, int ordinal) {
-        Enum[] array = idToEnumArray.get(id);
+        Enum[] array = idToEnumArray[id];
         assert(array != null);
         return array[ordinal];
     }
