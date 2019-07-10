@@ -1,6 +1,7 @@
 package intruder.RPC;
 
 import com.ibm.darpc.DaRPCMessage;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -9,13 +10,14 @@ import static intruder.RPC.Request.*;
 public class Response implements DaRPCMessage {
     public static final int FAILED = -1;
     public static final int SUCCESS = 0;
-    public static final int SIZE = 8 + 16;
+    public static final int SIZE = 8 + 256;
     public int cmd;
     public int status = FAILED;
     public ReserveBufferRES reserveBufferRES;
     public NotifyBufferLimitRES notifyBufferLimitRES;
     public ReleaseAndReserveRES releaseAndReserveRES;
     public WaitFinishRES waitFinishRES;
+    public GetTIBRES getTIBRES;
 
     public void setReserveBufferRES(ReserveBufferRES reserveBufferRES) {
         this.reserveBufferRES = reserveBufferRES;
@@ -40,6 +42,12 @@ public class Response implements DaRPCMessage {
         status = SUCCESS;
     }
 
+    public void setGetTIBRES(GetTIBRES getTIBRES) {
+        this.getTIBRES = getTIBRES;
+        cmd = getTIBRES.type();
+        status = SUCCESS;
+    }
+
     @Override
     public int write(ByteBuffer buffer) throws IOException {
         buffer.putInt(cmd);
@@ -59,7 +67,10 @@ public class Response implements DaRPCMessage {
                 case WAIT_FINISH_CMD:
                     written += waitFinishRES.write(buffer);
                     break;
-                }
+                case GET_TIB_CMD:
+                    written += getTIBRES.write(buffer);
+                    break;
+            }
         }
         return written;
     }
@@ -86,6 +97,10 @@ public class Response implements DaRPCMessage {
             case WAIT_FINISH_CMD:
                 waitFinishRES = new WaitFinishRES();
                 waitFinishRES.update(buffer);
+                break;
+            case GET_TIB_CMD:
+                getTIBRES = new GetTIBRES();
+                getTIBRES.update(buffer);
                 break;
         }
     }
@@ -129,6 +144,33 @@ public class Response implements DaRPCMessage {
             start = buffer.getLong();
             size = buffer.getInt();
             rkey = buffer.getInt();
+        }
+    }
+
+    public static class GetTIBRES implements RES {
+        public long[] tibs;
+        public int length;
+        public int type() {
+            return GET_TIB_CMD;
+        }
+        public GetTIBRES() {}
+
+        public GetTIBRES(long[] tibs, int length) {
+            this.tibs = tibs;
+            this.length = length;
+        }
+
+        public int write(ByteBuffer buffer) {
+            buffer.putInt(length);
+            for (int i = 0; i < length; i++)
+                buffer.putLong(tibs[i]);
+            return 4 + 8 * tibs.length;
+        }
+        public void update(ByteBuffer buffer) {
+            length = buffer.getInt();
+            this.tibs = new long[length];
+            for (int i = 0; i < length; i++)
+                tibs[i] = buffer.getLong();
         }
     }
     private static abstract class NoPayLoad {

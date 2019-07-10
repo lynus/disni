@@ -1,6 +1,7 @@
 package intruder;
 
 public abstract class Stream {
+    public static final long ROOTMARKER = 0xCAFECAFE;
     protected Endpoint ep;
     protected int connectionId = -1;
 

@@ -10,13 +10,14 @@ public class Request implements DaRPCMessage {
     public final static int NOTIFY_BUFFER_LIMIT_CMD = 2;
     public final static int RELEASE_AND_RESERVE_CMD = 3;
     public final static int WAIT_FINISH_CMD = 4;
+    public final static int GET_TIB_CMD = 5;
     private final static int SIZE = 8 + 16;
     public int cmd, connectId;
     public ReserveBufferREQ reserveBufferREQ;
     public NotifyBufferLimitREQ notifyBufferLimitREQ;
     public ReleaseAndReserveREQ releaseAndReserveREQ;
     public WaitFinishREQ waitFinishREQ;
-
+    public GetTIBREQ getTIBREQ;
     public Request() {}
     public Request(int connectId, ReserveBufferREQ reserveBufferREQ) {
         this.connectId = connectId;
@@ -42,6 +43,12 @@ public class Request implements DaRPCMessage {
         this.waitFinishREQ = waitFinishREQ;
     }
 
+    public Request(int connectId, GetTIBREQ getTIBREQ) {
+        this.connectId = connectId;
+        this.cmd = getTIBREQ.type();
+        this.getTIBREQ = getTIBREQ;
+    }
+
     @Override
     public int write(ByteBuffer buffer) throws IOException {
         buffer.putInt(connectId);
@@ -60,6 +67,8 @@ public class Request implements DaRPCMessage {
             case WAIT_FINISH_CMD:
                 written += waitFinishREQ.write(buffer);
                 break;
+            case GET_TIB_CMD:
+                written += getTIBREQ.write(buffer);
         }
         return written;
     }
@@ -84,6 +93,9 @@ public class Request implements DaRPCMessage {
                 this.waitFinishREQ = new WaitFinishREQ();
                 waitFinishREQ.update(buffer);
                 break;
+            case GET_TIB_CMD:
+                this.getTIBREQ = new GetTIBREQ();
+                getTIBREQ.update(buffer);
         }
     }
 
@@ -184,6 +196,11 @@ public class Request implements DaRPCMessage {
     public static class WaitFinishREQ extends NOPayLoad implements REQ{
         public int type() {
             return WAIT_FINISH_CMD;
+        }
+    }
+    public static class GetTIBREQ extends NOPayLoad implements REQ {
+        public int type() {
+            return GET_TIB_CMD;
         }
     }
 }

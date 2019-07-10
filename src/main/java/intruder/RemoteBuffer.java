@@ -14,7 +14,8 @@ public class RemoteBuffer extends Buffer{
     protected int RKey;
     protected int begin;
     protected RPCClient rpcClient;
-    protected Endpoint ep;
+    public int limit;
+    public int lastFlush;
     public void setup(int RKey, long address, int size, RPCClient rpcClient) {
         this.RKey = RKey;
         this.start = Address.fromLong(address);
@@ -26,48 +27,44 @@ public class RemoteBuffer extends Buffer{
     public static RemoteBuffer reserveBuffer(RPCClient rpcClient, Endpoint ep) throws  IOException {
         RemoteBuffer buffer = new RemoteBuffer();
         rpcClient.reserveBuffer(buffer);
-        buffer.ep = ep;
         return buffer;
     }
 
     public int freeSpace() {
-        return length.toInt() - begin;
+        return length.toInt() - lastFlush;
     }
 
-    public void write(Address rBufferStart, int rBufferLength, int lkey) throws IOException {
-        assert(rBufferLength <= freeSpace());
+    public void setLimit(int stageHead) {
+        this.limit = stageHead;
+    }
+
+    public static Address getRemoteAddress(int stagHead, RemoteBuffer last, RemoteBuffer current) {
+        if (last != null) {
+            assert (last.limit != 0);
+            assert(current.lastFlush == 0);
+            stagHead -= last.limit - last.lastFlush;
+            return current.start.plus(stagHead);
+        } else {
+            assert(current.lastFlush + stagHead  <= current.length.toInt());
+            return current.start.plus(current.lastFlush + stagHead);
+        }
+
+    }
+
+    private IbvSendWR assembleWR(Address rBufferStart, int rBufferLength, int lkey) throws IOException {
+        assert (rBufferLength <= freeSpace());
         IbvSendWR sendWR = newWriteWR(1);
         IbvSge sge = sendWR.getSg_list().getFirst();
         sge.setLength(rBufferLength);
         sge.setAddr(rBufferStart.toLong());
         sge.setLkey(lkey);
         sendWR.getRdma().setRkey(RKey);
-        sendWR.getRdma().setRemote_addr(start.toLong() + begin);
-        LinkedList<IbvSendWR> list = new LinkedList<IbvSendWR>();
-        list.add(sendWR);
-        ep.postSend(list).execute().free();
-        try {
-            IbvWC wc = ep.waitEvent();
-            if (wc.getStatus() != 0)
-                throw new IOException("write error");
-        } catch (InterruptedException ex) {
-        }
-        begin += rBufferLength;
+        sendWR.getRdma().setRemote_addr(start.toLong() + lastFlush);
+        return sendWR;
     }
 
-    public void writeWarp(Address rBufferStart1, int length1, Address rBufferStart2, int length2, int lkey) throws IOException {
-        assert (length1 + length2 <= freeSpace());
-        IbvSendWR sendWR = newWriteWR(2);
-        IbvSge sge = sendWR.getSge(0);
-        sge.setLength(length1);
-        sge.setAddr(rBufferStart1.toLong());
-        sge.setLkey(lkey);
-        sge = sendWR.getSge(1);
-        sge.setLength(length2);
-        sge.setAddr(rBufferStart2.toLong());
-        sge.setLkey(lkey);
-        sendWR.getRdma().setRkey(RKey);
-        sendWR.getRdma().setRemote_addr(start.toLong() + begin);
+    public void write(Endpoint ep, Address stageBuffer, int stageHead, int lkey) throws IOException {
+        IbvSendWR sendWR = assembleWR(stageBuffer, stageHead, lkey);
         LinkedList<IbvSendWR> list = new LinkedList<IbvSendWR>();
         list.add(sendWR);
         ep.postSend(list).execute().free();
@@ -77,16 +74,37 @@ public class RemoteBuffer extends Buffer{
                 throw new IOException("write error");
         } catch (InterruptedException ex) {
         }
-        begin += length1 + length2;
+        lastFlush += stageHead;
+        notifyLimit();
     }
+
+    public static void writeTwoBuffer(Endpoint ep, Address stageBuffer, int stageHead, int lkey, RemoteBuffer last, RemoteBuffer current) throws IOException{
+        IbvSendWR sendWRLast = last.assembleWR(stageBuffer, last.limit - last.lastFlush, lkey);
+        int remain = stageHead - (last.limit - last.lastFlush);
+        IbvSendWR sendWRCurrent = current.assembleWR(stageBuffer, remain, lkey);
+        LinkedList<IbvSendWR> list = new LinkedList<IbvSendWR>();
+        list.add(sendWRLast);
+        list.add(sendWRCurrent);
+        ep.postSend(list).execute().free();
+        try {
+            IbvWC wc = ep.waitEvent();
+            if (wc.getStatus() != 0)
+                throw new IOException("write error");
+        } catch (InterruptedException ex) {
+        }
+        last.notifyLimit();
+        current.notifyLimit();
+        current.lastFlush = remain;
+    }
+
 
     //notify remote host the limit pointer of this buffer
     public void notifyLimit() throws IOException{
-        if ((begin & 7) == 4) {
-            rpcClient.notifyBufferLimit(start.toLong(), begin, true);
-            begin += 4;
+        if ((lastFlush & 7) == 4) {
+            rpcClient.notifyBufferLimit(start.toLong(), lastFlush, true);
+            lastFlush += 4;
         } else
-            rpcClient.notifyBufferLimit(start.toLong(), begin, false);
+            rpcClient.notifyBufferLimit(start.toLong(), lastFlush, false);
     }
 
     public void reserve() throws IOException {

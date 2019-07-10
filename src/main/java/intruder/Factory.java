@@ -11,7 +11,6 @@ import java.net.InetSocketAddress;
 public class Factory implements RdmaEndpointFactory<Endpoint> {
     static private RdmaActiveEndpointGroup<Endpoint> group;
     static private Factory self;
-    static private RdmaClassIdManager idManager = new RdmaClassIdManager();
     private Factory() {}
     static {
         try {
@@ -37,22 +36,22 @@ public class Factory implements RdmaEndpointFactory<Endpoint> {
     }
 
     static public int registerRdmaClass(Class cls) {
-        return idManager.registerClass(cls);
+        return RdmaClassIdManager.registerClass(cls);
     }
 
     //dimension field in the id is strip before call this method.
     static public RVMType query(int id) {
-        return idManager.query(id);
+        return RdmaClassIdManager.query(id);
     }
 
     //argument cls can be both array or scalar class
     static public int query(Class cls) {
         RVMType type = ObjectModel.getInnerMostEleType(cls);
-        return idManager.query(type);
+        return RdmaClassIdManager.query(type);
     }
 
     static public Enum query(int id, int ordinal) {
-        return idManager.queryEnum(id, ordinal);
+        return RdmaClassIdManager.queryEnum(id, ordinal);
     }
 
     static public void close() throws InterruptedException, IOException {

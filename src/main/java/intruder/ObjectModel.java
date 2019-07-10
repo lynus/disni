@@ -1,7 +1,6 @@
 package intruder;
 
 import org.jikesrvm.classloader.RVMArray;
-import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
 import org.jikesrvm.objectmodel.JavaHeader;
 import org.jikesrvm.objectmodel.TIB;
@@ -85,7 +84,7 @@ public class ObjectModel {
     // -1 for primitives; 0 for classes
     @Inline
     private static int getDimension(Object object) {
-        RVMType type = getType(object.getClass());
+        RVMType type = Magic.getObjectType(object);
         return type.getDimensionality();
     }
     @Inline
@@ -94,6 +93,13 @@ public class ObjectModel {
         assert(id != -1);
         int dimension = getDimension(object);
         HeaderEncoding.setObjctType(start, id, dimension);
+    }
+
+    @Inline
+    public static void setRemoteTIB(RdmaClassIdManager idManager, Object object, Address start) {
+       RVMType type = Magic.getObjectType(object);
+       long tib = idManager.queryTIB(type);
+       start.store(tib);
     }
     @Inline
     public static void fillGap(Address addr) {
@@ -169,7 +175,7 @@ public class ObjectModel {
 
     //see SpecializedScanMethod.fallback()
     @Inline
-    public static int getAllReferences(Object object, Object[] refArray) {
+    public static int getAllReferences(Object object, Object[] refArray, AddressArray slots) {
         Address base = Magic.objectAsAddress(object);
         RVMType type = Magic.getObjectType(object);
         int[] offsets = type.getReferenceOffsets();
@@ -177,13 +183,16 @@ public class ObjectModel {
         if (offsets == REFARRAY_OFFSET_ARRAY) {
             length = getArrayLength(object);
             for (int i = 0; i < length; i++) {
-                Object obj = base.plus(i << 3).loadObjectReference().toObject();
-                refArray[i] = obj;
+                Address slot = base.plus(i <<3);
+                slots.set(i, slot);
+                refArray[i] = slot.loadObjectReference().toObject();
             }
         } else {
             length = offsets.length;
             for (int i = 0; i < length; i++) {
-                refArray[i] = base.plus(offsets[i]).loadObjectReference().toObject();
+                Address slot = base.plus(offsets[i]);
+                slots.set(i, slot);
+                refArray[i] = slot.loadObjectReference().toObject();
             }
         }
         return length;

@@ -5,10 +5,7 @@ import com.ibm.darpc.DaRPCServerEvent;
 import com.ibm.darpc.DaRPCServerGroup;
 import com.ibm.darpc.DaRPCService;
 import com.ibm.disni.RdmaServerEndpoint;
-import intruder.Buffer;
-import intruder.IntruderInStream;
-import intruder.LocalBuffer;
-import intruder.Utils;
+import intruder.*;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -107,6 +104,10 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                         break;
                     }
                 }
+            case Request.GET_TIB_CMD:
+                response.setGetTIBRES(new Response.GetTIBRES(RdmaClassIdManager.getTibs(),
+                        RdmaClassIdManager.getCount()));
+                break;
             }
         }
         event.triggerResponse();

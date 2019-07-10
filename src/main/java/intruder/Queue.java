@@ -20,20 +20,21 @@ public class Queue {
         tail = Offset.zero();
     }
     @Inline
-    public void add(Object obj) {
+    public void addObjSlot(Object obj, Address slot) {
         start.store(ObjectReference.fromObject(obj), head);
-        head = head.plus(8);
+        start.store(slot, head.plus(8));
+        head = head.plus(16);
     }
     @Inline
-    public Object remove() {
+    public Address removeObjSlot() {
         if (tail.sLT(head)) {
-            ObjectReference ref = start.loadObjectReference(tail);
-            if (tail.plus(8).EQ(head)) {
+            Address ret = start.plus(tail);
+            if (tail.plus(16).EQ(head)) {
                 tail = Offset.zero();
                 head = Offset.zero();
             } else
-                tail = tail.plus(8);
-            return ref.toObject();
+                tail = tail.plus(16);
+            return ret;
         }
         return null;
     }

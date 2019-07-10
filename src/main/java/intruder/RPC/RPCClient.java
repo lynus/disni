@@ -1,6 +1,10 @@
 package intruder.RPC;
 
-import com.ibm.darpc.*;
+import com.ibm.darpc.DaRPCClientEndpoint;
+import com.ibm.darpc.DaRPCClientGroup;
+import com.ibm.darpc.DaRPCFuture;
+import com.ibm.darpc.DaRPCStream;
+import intruder.RdmaClassIdManager;
 import intruder.RemoteBuffer;
 import intruder.Utils;
 
@@ -104,6 +108,16 @@ public class RPCClient {
         while (!future.isDone()) {}
         if (response.status != Response.SUCCESS)
             throw new IOException("wait finish rpc failed");
+    }
+    public void getRemoteTIB(RdmaClassIdManager idManager) throws IOException {
+        Request request = new Request(connectId, new Request.GetTIBREQ());
+        Response response = new Response();
+        DaRPCFuture<Request, Response> future = stream.request(request, response, false);
+        while (!future.isDone()) {}
+        if (response.status != Response.SUCCESS)
+            throw new IOException("get TIB rpc failed");
+        long[] tibs = response.getTIBRES.tibs;
+        idManager.installRemoteTIB(tibs);
     }
 
     public int getNotifyTimes() {

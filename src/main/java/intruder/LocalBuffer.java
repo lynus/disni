@@ -38,7 +38,7 @@ public class LocalBuffer extends Buffer {
         this.nextBuffer = buffer;
     }
     @Inline
-    private boolean reachLimit() {
+    public boolean reachLimit() {
         return pointer >= limit;
     }
     public void markConsumed() {
@@ -50,67 +50,38 @@ public class LocalBuffer extends Buffer {
         nextBuffer = null;
         ((SegregatedFreeListSpace)space).releaseMixedBlock(start);
     }
-   
-    public static AddrBufferRet getNextAddr(LocalBuffer buffer, AddrBufferRet ret) {
-        if (!buffer.reachLimit()) {
-            return buffer.bumpPointer(ret);
-        }
-        assert(buffer.pointer == buffer.limit);
-        while(!buffer.consumed && buffer.reachLimit()) {}
-        if (buffer.consumed) {
-            //move to next buffer
-            LocalBuffer nextBuffer = buffer.getNextBuffer();
-            while (nextBuffer == null)
-                nextBuffer = buffer.getNextBuffer();
-            return getNextAddr(nextBuffer, ret);
-        }
-        //new data has filled into this buffer
-        return buffer.bumpPointer(ret);
-    }
 
-    private AddrBufferRet bumpPointer(AddrBufferRet ret) {
-        assert((pointer & 7) == 0 || (pointer & 7) ==4);
-        assert((pointer & 7) == 0 || (start.plus(pointer).loadInt() ==
-              org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE));
-        if ((pointer & 7) != 0)
-            pointer += 4;
-        Address header = start.plus(pointer);
-        ret.set(header, this);
-        if (HeaderEncoding.isNoneObjectType(header)) {
-            pointer += 8;
-        } else {
-            assert (HeaderEncoding.isObjectType(header));
-            int size = ObjectModel.getAlignedUpSize(ObjectModel.getClassByHeader(header), header);
-            pointer += size;
-        }
-        assert(pointer <= limit);
+    public long getMarker() {
+        assert((pointer & 7) == 0);
+        long ret = start.plus(pointer).loadLong();
+        pointer += 8;
         return ret;
     }
 
+    public boolean isConsumed() {
+        return consumed;
+    }
+
+    public Address getJump() {
+        assert((pointer & 7) == 0);
+        Address ret = start.plus(pointer).loadAddress();
+        pointer += 8;
+        return ret;
+    }
+    public Object getRoot() {
+        assert((pointer & 7) == 0);
+        //no need to update pointer
+        return start.plus(pointer + ObjectModel.REF_OFFSET).loadObjectReference().toObject();
+    }
+    public boolean inRange(Address jump) {
+        return (jump.GE(start) && jump.LT(start.plus(length)));
+    }
+    public void setPointer(Address jump) {
+        pointer = jump.diff(jump).toInt();
+    }
+
+   
     public void peekBytes(int offset, int size, int logBytesPerLine) {
         Utils.peekBytes("local buffer", start, offset, size, logBytesPerLine);
-    }
-    static class AddrBufferRet {
-        private Address addr;
-        private LocalBuffer buffer;
-        public AddrBufferRet(Address a, LocalBuffer b) {
-            this.addr = a;
-            this.buffer = b;
-        }
-        public AddrBufferRet() {
-        }
-        @Inline
-        public Address getAddr() {
-            return addr;
-        }
-        @Inline
-        public LocalBuffer getLocalBuffer() {
-            return buffer;
-        }
-        @Inline
-        public void set(Address addr, LocalBuffer buffer) {
-            this.addr = addr;
-            this.buffer = buffer;
-        }
     }
 }
