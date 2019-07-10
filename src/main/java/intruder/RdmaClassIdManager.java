@@ -1,5 +1,6 @@
 package intruder;
 
+import gnu.CORBA.Poa.AOM;
 import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
 import org.jikesrvm.runtime.Magic;
@@ -27,12 +28,21 @@ public class RdmaClassIdManager{
             classToIdMap.put(RVMType.FloatType, Integer.valueOf(5));
             classToIdMap.put(RVMType.DoubleType, Integer.valueOf(6));
             classToIdMap.put(RVMType.CharType, Integer.valueOf(7));
-            classToIdMap.put(RVMType.JavaLangStringType, Integer.valueOf(8));
+            classToIdMap.put(ObjectModel.getType(Boolean.class), Integer.valueOf(8));
+            classToIdMap.put(ObjectModel.getType(Byte.class), Integer.valueOf(9));
+            classToIdMap.put(ObjectModel.getType(Short.class), Integer.valueOf(10));
+            classToIdMap.put(ObjectModel.getType(Integer.class), Integer.valueOf(11));
+            classToIdMap.put(ObjectModel.getType(Long.class), Integer.valueOf(12));
+            classToIdMap.put(ObjectModel.getType(Float.class), Integer.valueOf(13));
+            classToIdMap.put(ObjectModel.getType(Double.class), Integer.valueOf(14));
+            classToIdMap.put(ObjectModel.getType(Character.class), Integer.valueOf(15));
+            classToIdMap.put(ObjectModel.getType(String.class), Integer.valueOf(16));
+            classToIdMap.put(ObjectModel.getType(Object.class), Integer.valueOf(17));
         } catch (Exception ex) {
             ex.printStackTrace();
             System.exit(1);
         }
-        counter = new AtomicInteger(9);
+        counter = new AtomicInteger(18);
 
         idToClassMap[0] = RVMType.BooleanType;
         idToClassMap[1] = RVMType.ByteType;
@@ -42,7 +52,16 @@ public class RdmaClassIdManager{
         idToClassMap[5] = RVMType.FloatType;
         idToClassMap[6] = RVMType.DoubleType;
         idToClassMap[7] = RVMType.CharType;
-        idToClassMap[8] = RVMType.JavaLangStringType;
+        idToClassMap[8] = ObjectModel.getType(Boolean.class);
+        idToClassMap[9] = ObjectModel.getType(Byte.class);
+        idToClassMap[10] = ObjectModel.getType(Short.class);
+        idToClassMap[11] = ObjectModel.getType(Integer.class);
+        idToClassMap[12] = ObjectModel.getType(Long.class);
+        idToClassMap[13] = ObjectModel.getType(Float.class);
+        idToClassMap[14] = ObjectModel.getType(Double.class);
+        idToClassMap[15] = ObjectModel.getType(Character.class);
+        idToClassMap[16] = ObjectModel.getType(String.class);
+        idToClassMap[17] = ObjectModel.getType(Object.class);
     }
     public int registerClass(Class cls) {
         int ret;
@@ -110,6 +129,7 @@ public class RdmaClassIdManager{
                     table[d1][d2][VALUE]= id;
                     break;
                 }
+                Utils.log("hashtable collision!");
             }
             if (d2 == MAXCOLI) throw new Exception("MAXCOLISION");
         }
