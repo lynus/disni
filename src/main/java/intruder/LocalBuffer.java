@@ -1,6 +1,7 @@
 package intruder;
 
 import com.ibm.disni.verbs.IbvMr;
+import org.jikesrvm.runtime.Magic;
 import org.mmtk.policy.SegregatedFreeListSpace;
 import org.vmmagic.pragma.Inline;
 import org.vmmagic.unboxed.Address;
@@ -8,7 +9,8 @@ import org.vmmagic.unboxed.Address;
 import java.io.IOException;
 
 public class LocalBuffer extends Buffer {
-    private int rkey, lkey, limit, pointer;
+    private int rkey, lkey, limit;
+    public  int pointer;
     private LocalBuffer nextBuffer;
     private boolean consumed;
     public void register(Endpoint ep) throws IOException {
@@ -71,7 +73,7 @@ public class LocalBuffer extends Buffer {
     public Object getRoot() {
         assert((pointer & 7) == 0);
         //no need to update pointer
-        return start.plus(pointer + ObjectModel.REF_OFFSET).loadObjectReference().toObject();
+        return Magic.addressAsObject(start.plus(pointer + ObjectModel.REF_OFFSET));
     }
     public boolean inRange(Address jump) {
         return (jump.GE(start) && jump.LT(start.plus(length)));

@@ -39,16 +39,14 @@ public class StageBuffer {
         return ret;
     }
     public Address reserveOneSlot() throws IOException{
+        assert((head & 7) == 0);
         reserve(8);
-        int aligned = alignAlloc();
-        Address ret = start.plus(aligned);
-        head = aligned + 8;
+        Address ret = start.plus(head);
+        head += 8;
         return ret;
     }
 
     public void reserve(int size) throws IOException {
-        //may skip over 4-byte padding
-        size += 4;
         if (current.freeSpace() < head + size) {
             assert(last == null);
             current.setLimit(head);
@@ -61,14 +59,14 @@ public class StageBuffer {
         return RemoteBuffer.getRemoteAddress(ptr, last, current);
     }
     public int fillRootMarker() throws IOException {
-        reserve(8);
+        reserve(8 + 4);
         int aligned = alignAlloc();
         start.plus(aligned).store(Stream.ROOTMARKER);
         head = aligned + 8;
         return aligned;
     }
     public Address fillEnum(Enum e) throws IOException {
-        reserve(8);
+        reserve(8 + 4);
         int aligned = alignAlloc();
         Address ret = RemoteBuffer.getRemoteAddress(aligned, last, current);
         int id = Factory.query(e.getClass());
@@ -79,7 +77,7 @@ public class StageBuffer {
     }
 
     public Address fillObject(Object object) throws IOException {
-        int size = ObjectModel.getAlignedUpSize(object);
+        int size = ObjectModel.getAlignedUpSize(object) + 4;
         reserve(size);
         int aligned = alignAlloc();
         Address ret = RemoteBuffer.getRemoteAddress(aligned, last, current);

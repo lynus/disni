@@ -114,9 +114,7 @@ public class RdmaClassIdManager{
     }
 
     public long queryTIB(RVMType type) {
-        int id = typeToRemoteTIB.get(type);
-        assert(id != -1);
-        return tibs[id];
+        return typeToRemoteTIB.getLong(type);
     }
 
     public static Enum queryEnum(int id, int ordinal) {
@@ -128,8 +126,9 @@ public class RdmaClassIdManager{
     public void installRemoteTIB(long[] tibs) {
         assert(counter.get() == tibs.length);
         try {
-            for (int i = 0; i < tibs.length; i++)
+            for (int i = 0; i < tibs.length; i++) {
                 typeToRemoteTIB.putLong(idToClassMap[i], tibs[i]);
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
             System.exit(1);
@@ -212,7 +211,7 @@ public class RdmaClassIdManager{
                     return -1;
                 }
                 if (tableLong[d1][d2][KEY] == key) {
-                    return table[d1][d2][VALUE];
+                    return tableLong[d1][d2][VALUE];
                 }
             }
             return -1L;

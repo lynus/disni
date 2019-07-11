@@ -31,6 +31,7 @@ public class Client {
         target.d = 'y';
         outStream.writeObject(target);
         outStream.flush();
+        System.in.read();
         Integer N = 1024;
         outStream.writeObject(N);
         Random rand = new Random();

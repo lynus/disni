@@ -164,7 +164,7 @@ public class Response implements DaRPCMessage {
             buffer.putInt(length);
             for (int i = 0; i < length; i++)
                 buffer.putLong(tibs[i]);
-            return 4 + 8 * tibs.length;
+            return 4 + 8 * length;
         }
         public void update(ByteBuffer buffer) {
             length = buffer.getInt();

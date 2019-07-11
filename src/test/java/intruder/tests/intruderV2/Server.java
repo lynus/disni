@@ -30,6 +30,7 @@ public class Server {
         Utils.log(object.toString());
         object = (TargetSimpleObject)instream.readObject();
         Utils.log(object.toString());
+        Utils.log("done");
 
         Integer N = (Integer)instream.readObject();
         long [][] arrays = new long[N][];

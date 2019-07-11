@@ -79,6 +79,7 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 long bufferStart = request.notifyBufferLimitREQ.getBufferStart();
                 boolean needGap = request.notifyBufferLimitREQ.needGap();
                 buffer = inStream.getLastBuffer();
+                Utils.log("notify limit start: 0x" + Long.toHexString(bufferStart) + " limit: " + limit);
                 if (buffer.getStart().toLong() != bufferStart) {
                     response.fail(Request.NOTIFY_BUFFER_LIMIT_CMD);
                     break;
@@ -105,6 +106,8 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                     }
                 }
             case Request.GET_TIB_CMD:
+                if (Utils.enableLog)
+                    Utils.log("rpc GET_TIB called");
                 response.setGetTIBRES(new Response.GetTIBRES(RdmaClassIdManager.getTibs(),
                         RdmaClassIdManager.getCount()));
                 break;

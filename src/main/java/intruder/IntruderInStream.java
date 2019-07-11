@@ -17,34 +17,33 @@ public class IntruderInStream extends Stream {
     }
 
     public Object readObject() throws IOException {
-        while(currentBuffer == null) {}
-        long marker = currentBuffer.getMarker();
         Object root;
-        assert(marker == Stream.ROOTMARKER);
+        while(currentBuffer == null) {}
         if (currentBuffer.reachLimit()) {
             while(!currentBuffer.isConsumed() && currentBuffer.reachLimit()) {}
             if (currentBuffer.isConsumed()) {
                 LocalBuffer _buffer = currentBuffer.getNextBuffer();
-                while(_buffer == null)
+                while (_buffer == null)
                     _buffer = currentBuffer.getNextBuffer();
                 currentBuffer = _buffer;
             }
         }
         Address jump = currentBuffer.getJump();
         if (currentBuffer.reachLimit()) {
-            //The limit means the buffer is full
-            LocalBuffer _buffer = currentBuffer.getNextBuffer();
-            while(_buffer == null)
-                _buffer = currentBuffer.getNextBuffer();
-            currentBuffer = _buffer;
+            currentBuffer = currentBuffer.getNextBuffer();
+            assert (currentBuffer != null);
         }
         root = currentBuffer.getRoot();
+        assert(root != null);
+        assert((jump.toLong() & 7) ==0);
+        if (jump.loadLong() != Stream.ROOTMARKER)
+            throw new IOException("expedted ROOT MARKER");
         if (currentBuffer.inRange(jump)) {
-            currentBuffer.setPointer(jump);
+            currentBuffer.setPointer(jump.plus(8));
         } else {
             currentBuffer = currentBuffer.getNextBuffer();
             assert(currentBuffer != null);
-            currentBuffer.setPointer(jump);
+            currentBuffer.setPointer(jump.plus(8));
         }
         return root;
     }
