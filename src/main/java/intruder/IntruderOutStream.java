@@ -48,6 +48,7 @@ public class IntruderOutStream extends Stream{
     public void writeObject(Object object) throws IOException {
         Address jumpSlot = stageBuffer.reserveOneSlot();
         if (object.getClass().isEnum()) {
+            //TODO: use HeaderEncode as placeholder
 //            stageBuffer.fillEnum((Enum)object);
             int marker = stageBuffer.fillRootMarker();
             jumpSlot.store(stageBuffer.getRemoteAddress(marker));
@@ -78,28 +79,23 @@ public class IntruderOutStream extends Stream{
                     continue;
                 }
             }
-            if (object.getClass().isEnum()) {
-//                Address remoteAddress = stageBuffer.fillEnum((Enum)object);
-//                if (!slot.isZero())
-//                    slot.store(remoteAddress);
-                assert (false);
-                continue;
-            }
             Address remoteAddress = stageBuffer.fillObject(object, twoReturn);
             if (!slot.isZero()) {
                 slot.store(remoteAddress);
-                Utils.log("install slot remote address: " + Long.toHexString(remoteAddress.toLong())
-                + " slot: 0x" + Long.toHexString(slot.toLong()));
             }
             int reflen = ObjectModel.getAllReferences(object, twoReturn.get(0), refArray, slotArray);
             for (int i = 0; i < reflen; i++) {
                 Object o = refArray[i];
-//                if (o == null) {
-//                    queue.add(null);
+                if (o == null)
+                    continue;
                 if (!useHandle) {
                     //normal object and enum
-                    if (o != null)
-                        queue.addObjSlot(o, slotArray.get(i));
+                    if (o.getClass().isEnum()) {
+                        remoteAddress = stageBuffer.queryEnumRemoteAddress((Enum)o);
+                        slotArray.get(i).store(remoteAddress);
+                        continue;
+                    }
+                    queue.addObjSlot(o, slotArray.get(i));
                 } else {
 //                    Integer handle = obj2HandleMap.get(o);
 //                    if (handle != null) {

@@ -1,6 +1,8 @@
 package intruder.RPC;
 
 import com.ibm.darpc.DaRPCMessage;
+import org.vmmagic.unboxed.Address;
+import org.vmmagic.unboxed.AddressArray;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -18,6 +20,7 @@ public class Response implements DaRPCMessage {
     public ReleaseAndReserveRES releaseAndReserveRES;
     public WaitFinishRES waitFinishRES;
     public GetTIBRES getTIBRES;
+    public GetEnumRES getEnumRES;
 
     public void setReserveBufferRES(ReserveBufferRES reserveBufferRES) {
         this.reserveBufferRES = reserveBufferRES;
@@ -48,6 +51,12 @@ public class Response implements DaRPCMessage {
         status = SUCCESS;
     }
 
+    public void setGetEnumRES(GetEnumRES getEnumRES) {
+        this.getEnumRES = getEnumRES;
+        cmd = getEnumRES.type();
+        status = SUCCESS;
+    }
+
     @Override
     public int write(ByteBuffer buffer) throws IOException {
         buffer.putInt(cmd);
@@ -69,6 +78,9 @@ public class Response implements DaRPCMessage {
                     break;
                 case GET_TIB_CMD:
                     written += getTIBRES.write(buffer);
+                    break;
+                case GET_ENUM_CMD:
+                    written += getEnumRES.write(buffer);
                     break;
             }
         }
@@ -101,6 +113,10 @@ public class Response implements DaRPCMessage {
             case GET_TIB_CMD:
                 getTIBRES = new GetTIBRES();
                 getTIBRES.update(buffer);
+                break;
+            case GET_ENUM_CMD:
+                getEnumRES = new GetEnumRES();
+                getEnumRES.update(buffer);
                 break;
         }
     }
@@ -173,6 +189,44 @@ public class Response implements DaRPCMessage {
                 tibs[i] = buffer.getLong();
         }
     }
+
+    public static class GetEnumRES implements RES {
+        public AddressArray[] enumAddressArray;
+        public int numEnum;
+        public int type() {
+            return GET_ENUM_CMD;
+        }
+
+        public GetEnumRES() {}
+        public GetEnumRES(AddressArray[] enumAddressArray, int length) {
+            this.enumAddressArray = enumAddressArray;
+            this.numEnum = length;
+        }
+
+        public int write(ByteBuffer buffer) {
+            int bytes = 4;
+            buffer.putInt(numEnum);
+            for (int i = 0; i < numEnum; i++) {
+                buffer.putInt(enumAddressArray[i].length());
+                for (int j = 0; j < enumAddressArray[i].length(); j++)
+                    buffer.putLong(enumAddressArray[i].get(j).toLong());
+                bytes += 4 + 8 * enumAddressArray[i].length();
+            }
+            return bytes;
+        }
+
+        public void update(ByteBuffer buffer) {
+            numEnum = buffer.getInt();
+            enumAddressArray = new AddressArray[numEnum];
+            for (int i = 0; i < numEnum; i++) {
+                int size = buffer.getInt();
+                enumAddressArray[i] = AddressArray.create(size);
+                for (int j = 0; j < size; j++)
+                    enumAddressArray[i].set(j, Address.fromLong(buffer.getLong()));
+            }
+        }
+    }
+
     private static abstract class NoPayLoad {
         //no data member
         public int size() {

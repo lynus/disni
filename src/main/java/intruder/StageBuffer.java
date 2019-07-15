@@ -33,6 +33,7 @@ public class StageBuffer {
         this.ep = ep;
         current = RemoteBuffer.reserveBuffer(rpcClient, ep);
         rpcClient.getRemoteTIB(idManager);
+        rpcClient.getRemoteEnum(idManager);
     }
 
     public Address reserveOneSlot() throws IOException{
@@ -49,8 +50,9 @@ public class StageBuffer {
             return;
         }
         if (current.freeSpace() < head + size) {
-            Utils.log("reserve: current buffer cannot reserve head: " + head + " current address: "
-                    + Long.toHexString(current.start.toLong()) + " free: " + current.freeSpace());
+            if (Utils.enableLog)
+                Utils.log("reserve: current buffer cannot reserve head: " + head + " current address: "
+                        + Long.toHexString(current.start.toLong()) + " free: " + current.freeSpace());
             current.setBoundry(head);
             last = current;
             current = RemoteBuffer.reserveBuffer(rpcClient, ep);
@@ -90,9 +92,12 @@ public class StageBuffer {
         return Address.zero();
     }
 
+    public Address queryEnumRemoteAddress(Enum e) {
+        return idManager.queryEnumRemoteAddress(e);
+    }
+
     public void mayFlush() throws IOException {
         if (last != null) {
-            Utils.log("last remmote buffer exists, start flushing");
             flush();
         }
     }

@@ -74,6 +74,9 @@ public class LocalBuffer extends Buffer {
         pointer += 8;
         return ret;
     }
+    public Address getJump1() {
+        return start.plus(pointer - 8).loadAddress();
+    }
     public Object getRoot() {
         assert((pointer & 7) == 0);
         //no need to update pointer

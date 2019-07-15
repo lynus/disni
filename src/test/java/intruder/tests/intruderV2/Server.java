@@ -50,41 +50,40 @@ public class Server {
         for (TargetRefObject obj : array) {
             Utils.log(obj.toString());
         }
-        System.in.read();
-        TargetRefObject obj1 = (TargetRefObject) instream.readObject();
-        TargetRefObject obj2 = (TargetRefObject) instream.readObject();
-        TargetRefObject obj3 = (TargetRefObject) instream.readObject();
-        Utils.log("obj1 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj1.ref3).toLong())
-                + " obj2 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj2).toLong()));
-        Utils.log("obj2 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj2.ref3).toLong())
-                + " obj3 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj3).toLong()));
-        Utils.log("obj3 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj3.ref3).toLong())
-                + " obj1 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj1).toLong()));
-        TargetRefObject[] refObjects = (TargetRefObject[]) instream.readObject();
-        TargetSimpleObject[][] sharedElementArray = (TargetSimpleObject[][]) instream.readObject();
+//        TargetRefObject obj1 = (TargetRefObject) instream.readObject();
+//        TargetRefObject obj2 = (TargetRefObject) instream.readObject();
+//        TargetRefObject obj3 = (TargetRefObject) instream.readObject();
+//        Utils.log("obj1 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj1.ref3).toLong())
+//                + " obj2 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj2).toLong()));
+//        Utils.log("obj2 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj2.ref3).toLong())
+//                + " obj3 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj3).toLong()));
+//        Utils.log("obj3 ref slot 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj3.ref3).toLong())
+//                + " obj1 address 0x" + Long.toHexString(ObjectModel.getObjectHeaderAddress(obj1).toLong()));
+//        TargetRefObject[] refObjects = (TargetRefObject[]) instream.readObject();
+//        TargetSimpleObject[][] sharedElementArray = (TargetSimpleObject[][]) instream.readObject();
 
         String str = (String)instream.readObject();
         Utils.log(str);
-        Utils.log(obj1.toString());
-
-        TestEnum myday = (TestEnum) instream.readObject();
-        Utils.log("Enum myday: " + myday.toString());
-
-        //remote outStream disabled handle
-        obj1 = (TargetRefObject) instream.readObject();
-        obj2 = (TargetRefObject) instream.readObject();
-        obj3 = (TargetRefObject) instream.readObject();
-        assert(obj1.ref1 != obj2.ref1);
-        assert(obj2.ref1 != obj3.ref1);
-
-        //now enabled handle
-        obj1 = (TargetRefObject) instream.readObject();
-        obj2 = (TargetRefObject) instream.readObject();
-        obj3 = (TargetRefObject) instream.readObject();
-        instream.setFinish();
-        assert(obj1.ref1 == obj2.ref1);
-        assert(obj2.ref1 == obj3.ref1);
-        Utils.log("pass!");
+//        Utils.log(obj1.toString());
+//
+//        TestEnum myday = (TestEnum) instream.readObject();
+//        Utils.log("Enum myday: " + myday.toString());
+//
+//        //remote outStream disabled handle
+//        obj1 = (TargetRefObject) instream.readObject();
+//        obj2 = (TargetRefObject) instream.readObject();
+//        obj3 = (TargetRefObject) instream.readObject();
+//        assert(obj1.ref1 != obj2.ref1);
+//        assert(obj2.ref1 != obj3.ref1);
+//
+//        //now enabled handle
+//        obj1 = (TargetRefObject) instream.readObject();
+//        obj2 = (TargetRefObject) instream.readObject();
+//        obj3 = (TargetRefObject) instream.readObject();
+//        instream.setFinish();
+//        assert(obj1.ref1 == obj2.ref1);
+//        assert(obj2.ref1 == obj3.ref1);
+//        Utils.log("pass!");
         System.in.read();
     }
 

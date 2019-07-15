@@ -36,6 +36,9 @@ public class IntruderInStream extends Stream {
             }
         }
         Address jump = currentBuffer.getJump();
+        while (jump == Address.zero())
+            jump = currentBuffer.getJump1();
+
         if (currentBuffer.reachBoundry()) {
             currentBuffer = currentBuffer.getNextBuffer();
             Utils.log("jump to next buffer 0x" + Long.toHexString(currentBuffer.getStart().toLong()));
@@ -47,13 +50,10 @@ public class IntruderInStream extends Stream {
         assert((jump.toLong() & 7) ==0);
         long tmp = jump.loadLong();
         while (tmp != Stream.ROOTMARKER) {
-//            try {
-//                Thread.sleep(2000);
-//            } catch (InterruptedException ex) {}
-            Utils.peekBytes("localbuffer", jump, 0, 48, 3);
-            Utils.log("expected ROOT MARKER addr 0x" + Long.toHexString(jump.toLong()) +
-                    " delta: " + jump.diff(currentBuffer.getStart()).toLong()
-                    + " value " + Long.toHexString(jump.loadLong()) + " tmp " + tmp);
+//            Utils.peekBytes("localbuffer", jump, 0, 48, 3);
+//            Utils.log("expected ROOT MARKER addr 0x" + Long.toHexString(jump.toLong()) +
+//                    " delta: " + jump.diff(currentBuffer.getStart()).toLong()
+//                    + " value " + Long.toHexString(jump.loadLong()) + " tmp " + tmp);
             tmp = jump.loadLong();
         }
         if (currentBuffer.inRange(jump)) {

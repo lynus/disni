@@ -11,6 +11,7 @@ public class Request implements DaRPCMessage {
     public final static int RELEASE_AND_RESERVE_CMD = 3;
     public final static int WAIT_FINISH_CMD = 4;
     public final static int GET_TIB_CMD = 5;
+    public final static int GET_ENUM_CMD = 6;
     private final static int SIZE = 8 + 16;
     public int cmd, connectId;
     public ReserveBufferREQ reserveBufferREQ;
@@ -18,6 +19,7 @@ public class Request implements DaRPCMessage {
     public ReleaseAndReserveREQ releaseAndReserveREQ;
     public WaitFinishREQ waitFinishREQ;
     public GetTIBREQ getTIBREQ;
+    public GetEnumREQ getEnumREQ;
     public Request() {}
     public Request(int connectId, ReserveBufferREQ reserveBufferREQ) {
         this.connectId = connectId;
@@ -49,6 +51,12 @@ public class Request implements DaRPCMessage {
         this.getTIBREQ = getTIBREQ;
     }
 
+    public Request(int connectId, GetEnumREQ getEnumREQ) {
+        this.connectId = connectId;
+        this.cmd = getEnumREQ.type();
+        this.getEnumREQ = getEnumREQ;
+    }
+
     @Override
     public int write(ByteBuffer buffer) throws IOException {
         buffer.putInt(connectId);
@@ -69,6 +77,9 @@ public class Request implements DaRPCMessage {
                 break;
             case GET_TIB_CMD:
                 written += getTIBREQ.write(buffer);
+                break;
+            case GET_ENUM_CMD:
+                written += getEnumREQ.write(buffer);
         }
         return written;
     }
@@ -96,6 +107,11 @@ public class Request implements DaRPCMessage {
             case GET_TIB_CMD:
                 this.getTIBREQ = new GetTIBREQ();
                 getTIBREQ.update(buffer);
+                break;
+            case GET_ENUM_CMD:
+                this.getEnumREQ = new GetEnumREQ();
+                getEnumREQ.update(buffer);
+                break;
         }
     }
 
@@ -201,6 +217,12 @@ public class Request implements DaRPCMessage {
     public static class GetTIBREQ extends NOPayLoad implements REQ {
         public int type() {
             return GET_TIB_CMD;
+        }
+    }
+
+    public static class GetEnumREQ extends NOPayLoad implements REQ {
+        public int type() {
+            return GET_ENUM_CMD;
         }
     }
 }

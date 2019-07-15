@@ -119,6 +119,17 @@ public class RPCClient {
         long[] tibs = response.getTIBRES.tibs;
         idManager.installRemoteTIB(tibs);
     }
+    public void getRemoteEnum(RdmaClassIdManager idManager) throws IOException {
+        Request request = new Request(connectId, new Request.GetEnumREQ());
+        Response response = new Response();
+        DaRPCFuture<Request, Response> future = stream.request(request, response, false);
+        while(!future.isDone()) {}
+        if (response.status != Response.SUCCESS)
+            throw new IOException("get enum rpc failed");
+        idManager.installRemoteEnum(response.getEnumRES.enumAddressArray);
+
+
+    }
 
     public int getNotifyTimes() {
         return notifyTimes;

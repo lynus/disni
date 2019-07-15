@@ -1,19 +1,28 @@
 package intruder;
 
+import com.ibm.disni.util.MemoryUtils;
 import org.jikesrvm.classloader.RVMType;
 import org.jikesrvm.runtime.Magic;
 import org.vmmagic.pragma.Inline;
+import org.vmmagic.unboxed.Address;
+import org.vmmagic.unboxed.AddressArray;
+import org.vmmagic.unboxed.Offset;
 
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RdmaClassIdManager{
     private SimpleRVMTypeHashTable typeToRemoteTIB = new SimpleRVMTypeHashTable();
+    private SimpleRVMTypeHashTable enumToRemoteAddress = new SimpleRVMTypeHashTable();
+    private ByteBuffer remoteEnumAddressBuffer = ByteBuffer.allocateDirect(4096);
     private static SimpleRVMTypeHashTable classToIdMap = new SimpleRVMTypeHashTable();
     private static RVMType[] idToClassMap = new RVMType[512];
-    private static Enum[][] idToEnumArray = new Enum[512][];
+    private static RVMType[] idToEnumType = new RVMType[32];
+    private static AddressArray[] enumAddresses = new AddressArray[32];
     private static long[] tibs = new long[512];
     private static AtomicInteger counter;
+    private static int enumCounter = 0;
     static public final int ARRAYTYPEMASK = 1 << 31;
     static public final int SCALARTYPEMASK = ~ARRAYTYPEMASK;
     static public final int ARRAYTYPE = 1 << 31;
@@ -87,11 +96,17 @@ public class RdmaClassIdManager{
         tibs[ret] = Magic.objectAsAddress(type.getTypeInformationBlock()).toLong();
         assert(tibs[ret] != 0L);
         if (cls.isEnum()) {
+            idToEnumType[enumCounter] = ObjectModel.getType(cls);
             Method method = null;
             try {
                 method = cls.getMethod("values");
                 Enum[] array = (Enum[])method.invoke(null);
-                idToEnumArray[ret] = array;
+                AddressArray enumRefs = AddressArray.create(array.length);
+                for (int i = 0; i < enumRefs.length(); i++) {
+                    enumRefs.set(i, Magic.objectAsAddress(array[i]));
+                }
+                enumAddresses[enumCounter] = enumRefs;
+                enumCounter++;
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -110,12 +125,15 @@ public class RdmaClassIdManager{
     public long queryTIB(RVMType type) {
         return typeToRemoteTIB.get(type);
     }
-
     public static Enum queryEnum(int id, int ordinal) {
-        Enum[] array = idToEnumArray[id];
-        assert(array != null);
-        return array[ordinal];
+        return null;
     }
+    public Address queryEnumRemoteAddress(Enum obj) {
+        RVMType enumType = ObjectModel.getType(obj.getDeclaringClass());
+        Address base = Address.fromLong(enumToRemoteAddress.get(enumType));
+        return base.plus(obj.ordinal()).loadAddress();
+    }
+
 
     public void installRemoteTIB(long[] tibs) {
         assert(counter.get() == tibs.length);
@@ -129,8 +147,35 @@ public class RdmaClassIdManager{
         }
     }
 
+    public void installRemoteEnum(AddressArray[] enumAddresses) {
+        assert (enumCounter == enumAddresses.length);
+        Address base = Address.fromLong(MemoryUtils.getAddress(remoteEnumAddressBuffer));
+        Offset ptr = Offset.zero();
+        try {
+            for (int i = 0; i < enumCounter; i++) {
+                long start = base.plus(ptr).toLong();
+                for (int j = 0; j < enumAddresses[i].length(); j++) {
+                    base.store(enumAddresses[i].get(j), ptr);
+                    ptr = ptr.plus(8);
+                }
+                ptr = ptr.plus(8);
+                enumToRemoteAddress.put(idToEnumType[i], start);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            System.exit(1);
+        }
+    }
+
     public static long[] getTibs() {
         return tibs;
+    }
+
+    public static AddressArray[] getEnumAddresses() {
+        return enumAddresses;
+    }
+    public static int getEnumCounter() {
+        return enumCounter;
     }
     public static int getCount() {
         return counter.get();

@@ -62,8 +62,9 @@ public class RemoteBuffer extends Buffer{
         sge.setLkey(lkey);
         sendWR.getRdma().setRkey(RKey);
         sendWR.getRdma().setRemote_addr(start.toLong() + lastFlush);
-        Utils.log("assembleWR local addr 0x" + Long.toHexString(rBufferStart.toLong()) +
-                " remote addr 0x" + Long.toHexString(start.plus(lastFlush).toLong()) + " length: " + rBufferLength);
+        if (Utils.enableLog)
+            Utils.log("assembleWR local addr 0x" + Long.toHexString(rBufferStart.toLong()) +
+                    " remote addr 0x" + Long.toHexString(start.plus(lastFlush).toLong()) + " length: " + rBufferLength);
         return sendWR;
     }
 
@@ -93,6 +94,9 @@ public class RemoteBuffer extends Buffer{
         ep.postSend(list).execute().free();
         try {
             IbvWC wc = ep.waitEvent();
+            if (wc.getStatus() != 0)
+                throw new IOException("write error");
+            wc = ep.waitEvent();
             if (wc.getStatus() != 0)
                 throw new IOException("write error");
         } catch (InterruptedException ex) {

@@ -76,23 +76,27 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 long bufferStart = request.notifyBufferLimitREQ.getBufferStart();
                 boolean isBoundry = request.notifyBufferLimitREQ.isBoundry();
                 if (isBoundry) {
-                    Utils.log("notify boundry start: 0x" + Long.toHexString(bufferStart) + " boundry: " + limit);
+                    if (Utils.enableLog)
+                        Utils.log("notify boundry start: 0x" + Long.toHexString(bufferStart) + " boundry: " + limit);
                     buffer = inStream.getNoBoundryBuffer();
                     assert(buffer.getBoundry() == 0);
                     if (bufferStart != buffer.getStart().toLong()) {
-                        Utils.log("current noboundry buffer addr: 0x" + Long.toHexString(buffer.getStart().toLong())
-                                + " rpc buffer addr: 0x" + Long.toHexString(bufferStart));
+                        if (Utils.enableLog)
+                            Utils.log("current noboundry buffer addr: 0x" + Long.toHexString(buffer.getStart().toLong())
+                                    + " rpc buffer addr: 0x" + Long.toHexString(bufferStart));
                         response.fail(Request.NOTIFY_BUFFER_LIMIT_CMD);
                         break;
                     }
                     buffer.setBoundry(limit);
                     inStream.nextNoBoundryBuffer();
                 } else {
-                    Utils.log("notify limit start: 0x" + Long.toHexString(bufferStart) + " boundry: " + limit);
+                    if (Utils.enableLog)
+                        Utils.log("notify limit start: 0x" + Long.toHexString(bufferStart) + " boundry: " + limit);
                     buffer = inStream.getLastBuffer();
                     if (bufferStart != buffer.getStart().toLong()) {
-                        Utils.log("last buffer addr: 0x" + Long.toHexString(buffer.getStart().toLong())
-                                + " rpc buffer addr: 0x" + Long.toHexString(bufferStart));
+                        if (Utils.enableLog)
+                            Utils.log("last buffer addr: 0x" + Long.toHexString(buffer.getStart().toLong())
+                                    + " rpc buffer addr: 0x" + Long.toHexString(bufferStart));
                         response.fail(Request.NOTIFY_BUFFER_LIMIT_CMD);
                         break;
                     }
@@ -116,6 +120,10 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                     Utils.log("rpc GET_TIB called");
                 response.setGetTIBRES(new Response.GetTIBRES(RdmaClassIdManager.getTibs(),
                         RdmaClassIdManager.getCount()));
+                break;
+            case Request.GET_ENUM_CMD:
+                Utils.log("rpc GET_ENUM called");
+                response.setGetEnumRES(new Response.GetEnumRES(RdmaClassIdManager.getEnumAddresses(), RdmaClassIdManager.getEnumCounter()));
                 break;
             }
         }

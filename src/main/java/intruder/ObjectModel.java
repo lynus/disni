@@ -69,6 +69,8 @@ public class ObjectModel {
     public static void setRemoteTIB(RdmaClassIdManager idManager, Object object, Address start) {
        RVMType type = Magic.getObjectType(object);
        long tib = idManager.queryTIB(type);
+       if (tib == -1)
+           Utils.log("setRemoteTIB fail type: " + type.getDescriptor());
        assert(tib != -1);
        start.store(tib);
     }
