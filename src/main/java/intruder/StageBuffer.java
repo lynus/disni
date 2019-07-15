@@ -3,6 +3,7 @@ package intruder;
 import com.ibm.disni.util.MemoryUtils;
 import intruder.RPC.RPCClient;
 import org.vmmagic.unboxed.Address;
+import org.vmmagic.unboxed.AddressArray;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -71,10 +72,12 @@ public class StageBuffer {
         return ret;
     }
 
-    public Address fillObject(Object object) throws IOException {
+    public Address fillObject(Object object, AddressArray tworet) throws IOException {
         int size = ObjectModel.getAlignedUpSize(object);
         reserve(size);
-        Address ret = RemoteBuffer.getRemoteAddress(head, last, current);
+        Address ret = RemoteBuffer.getRemoteAddress(head + ObjectModel.REF_OFFSET, last, current);
+        Address stageAddr = start.plus(head + ObjectModel.REF_OFFSET);
+        tworet.set(0, stageAddr);
         ObjectModel.copyObject(object, start.plus(head));
 //        ObjectModel.setRegisteredID(object, start.plus(aligned));
         ObjectModel.setRemoteTIB(idManager, object, start.plus(head));

@@ -16,6 +16,7 @@ public class IntruderOutStream extends Stream{
     private intruder.Queue queue = new intruder.Queue(512);
     private Object[] refArray = new Object[32];
     private AddressArray slotArray = AddressArray.create(32);
+    private AddressArray twoReturn = AddressArray.create(1);
     public static boolean debug = false;
     public IntruderOutStream(Endpoint ep) throws IOException{
         super(ep);
@@ -81,12 +82,16 @@ public class IntruderOutStream extends Stream{
 //                Address remoteAddress = stageBuffer.fillEnum((Enum)object);
 //                if (!slot.isZero())
 //                    slot.store(remoteAddress);
+                assert (false);
                 continue;
             }
-            Address remoteAddress = stageBuffer.fillObject(object);
-            if (!slot.isZero())
+            Address remoteAddress = stageBuffer.fillObject(object, twoReturn);
+            if (!slot.isZero()) {
                 slot.store(remoteAddress);
-            int reflen = ObjectModel.getAllReferences(object, refArray, slotArray);
+                Utils.log("install slot remote address: " + Long.toHexString(remoteAddress.toLong())
+                + " slot: 0x" + Long.toHexString(slot.toLong()));
+            }
+            int reflen = ObjectModel.getAllReferences(object, twoReturn.get(0), refArray, slotArray);
             for (int i = 0; i < reflen; i++) {
                 Object o = refArray[i];
 //                if (o == null) {

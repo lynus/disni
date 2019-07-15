@@ -44,19 +44,10 @@ public class RemoteBuffer extends Buffer{
             assert(current.lastFlush == 0);
             stagHead -= last.boundry - last.lastFlush;
             Address ret = current.start.plus(stagHead);
-            if (ret.toLong() == 0xc00fffdced8L) {
-                Thread.dumpStack();
-                System.exit(1);
-            }
             return ret;
         } else {
             assert(current.lastFlush + stagHead  <= current.length.toInt());
             Address ret = current.start.plus(current.lastFlush + stagHead);
-            if (ret.toLong() == 0xc00fffdced8L) {
-                Utils.log("stage head: " + stagHead);
-                Thread.dumpStack();
-//                System.exit(1);
-            }
             return ret;
         }
 

@@ -20,6 +20,7 @@ public class Server {
         Factory.registerRdmaClass(TargetRefObject.class);
         Factory.registerRdmaClass(String.class);
         Factory.registerRdmaClass(TestEnum.class);
+        Factory.registerRdmaClass(TargetRefObject[].class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Listener listener = Factory.newListener(address);
         Endpoint ep = listener.accept();
@@ -44,13 +45,12 @@ public class Server {
             i++;
         }
         Utils.log("done checking received arrays");
-        System.in.read();
         TargetRefObject[] array = (TargetRefObject[])instream.readObject();
         Utils.log("array length: " + array.length);
         for (TargetRefObject obj : array) {
             Utils.log(obj.toString());
         }
-
+        System.in.read();
         TargetRefObject obj1 = (TargetRefObject) instream.readObject();
         TargetRefObject obj2 = (TargetRefObject) instream.readObject();
         TargetRefObject obj3 = (TargetRefObject) instream.readObject();

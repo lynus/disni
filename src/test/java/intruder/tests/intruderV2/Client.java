@@ -21,6 +21,7 @@ public class Client {
         Factory.registerRdmaClass(TargetRefObject.class);
         Factory.registerRdmaClass(String.class);
         Factory.registerRdmaClass(TestEnum.class);
+        Factory.registerRdmaClass(TargetRefObject[].class);
         InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(args[0]), 8090);
         Endpoint ep = Factory.newEndpoint();
         ep.connect(address, 10);
@@ -45,7 +46,6 @@ public class Client {
             outStream.writeObject(array);
         }
         outStream.flush();
-        System.in.read();
         TargetRefObject[] array = new TargetRefObject[8];
         TargetRefObject ele = new TargetRefObject();
         ele.ref2 = new TargetPrimitiveObject();
@@ -54,6 +54,7 @@ public class Client {
         }
         outStream.writeObject(array);
         outStream.flush();
+        System.in.read();
 
         TargetRefObject r1 = new TargetRefObject();
         TargetRefObject r2= new TargetRefObject();

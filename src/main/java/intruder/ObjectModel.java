@@ -142,7 +142,7 @@ public class ObjectModel {
 
     //see SpecializedScanMethod.fallback()
     @Inline
-    public static int getAllReferences(Object object, Object[] refArray, AddressArray slots) {
+    public static int getAllReferences(Object object, Address stageAddr, Object[] refArray, AddressArray slots) {
         Address base = Magic.objectAsAddress(object);
         RVMType type = Magic.getObjectType(object);
         int[] offsets = type.getReferenceOffsets();
@@ -150,16 +150,16 @@ public class ObjectModel {
         if (offsets == REFARRAY_OFFSET_ARRAY) {
             length = getArrayLength(object);
             for (int i = 0; i < length; i++) {
-                Address slot = base.plus(i <<3);
+                Address slot = stageAddr.plus(i <<3);
                 slots.set(i, slot);
-                refArray[i] = slot.loadObjectReference().toObject();
+                refArray[i] = base.plus(i << 3).loadObjectReference().toObject();
             }
         } else {
             length = offsets.length;
             for (int i = 0; i < length; i++) {
-                Address slot = base.plus(offsets[i]);
+                Address slot = stageAddr.plus(offsets[i]);
                 slots.set(i, slot);
-                refArray[i] = slot.loadObjectReference().toObject();
+                refArray[i] = base.plus(offsets[i]).loadObjectReference().toObject();
             }
         }
         return length;
