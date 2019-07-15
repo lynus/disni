@@ -30,7 +30,6 @@ public class Server {
         Utils.log(object.toString());
         object = (TargetSimpleObject)instream.readObject();
         Utils.log(object.toString());
-        Utils.log("done");
 
         Integer N = (Integer)instream.readObject();
         long [][] arrays = new long[N][];
@@ -45,7 +44,7 @@ public class Server {
             i++;
         }
         Utils.log("done checking received arrays");
-
+        System.in.read();
         TargetRefObject[] array = (TargetRefObject[])instream.readObject();
         Utils.log("array length: " + array.length);
         for (TargetRefObject obj : array) {

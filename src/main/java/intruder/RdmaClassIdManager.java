@@ -1,6 +1,5 @@
 package intruder;
 
-import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
 import org.jikesrvm.runtime.Magic;
 import org.vmmagic.pragma.Inline;
@@ -9,8 +8,8 @@ import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RdmaClassIdManager{
-    private SimpleRVMTypeHashTable typeToRemoteTIB = new SimpleRVMTypeHashTable(1);
-    private static SimpleRVMTypeHashTable classToIdMap = new SimpleRVMTypeHashTable(0);
+    private SimpleRVMTypeHashTable typeToRemoteTIB = new SimpleRVMTypeHashTable();
+    private static SimpleRVMTypeHashTable classToIdMap = new SimpleRVMTypeHashTable();
     private static RVMType[] idToClassMap = new RVMType[512];
     private static Enum[][] idToEnumArray = new Enum[512][];
     private static long[] tibs = new long[512];
@@ -21,14 +20,14 @@ public class RdmaClassIdManager{
     static public final int NONARRAYTYPE = 0;
     static {
         try {
-            classToIdMap.put(RVMType.BooleanType, Integer.valueOf(0));
-            classToIdMap.put(RVMType.ByteType, Integer.valueOf(1));
-            classToIdMap.put(RVMType.ShortType, Integer.valueOf(2));
-            classToIdMap.put(RVMType.IntType, Integer.valueOf(3));
-            classToIdMap.put(RVMType.LongType, Integer.valueOf(4));
-            classToIdMap.put(RVMType.FloatType, Integer.valueOf(5));
-            classToIdMap.put(RVMType.DoubleType, Integer.valueOf(6));
-            classToIdMap.put(RVMType.CharType, Integer.valueOf(7));
+            classToIdMap.put(ObjectModel.getType(boolean[].class), Integer.valueOf(0));
+            classToIdMap.put(ObjectModel.getType(byte[].class), Integer.valueOf(1));
+            classToIdMap.put(ObjectModel.getType(short[].class), Integer.valueOf(2));
+            classToIdMap.put(ObjectModel.getType(int[].class), Integer.valueOf(3));
+            classToIdMap.put(ObjectModel.getType(long[].class), Integer.valueOf(4));
+            classToIdMap.put(ObjectModel.getType(float[].class), Integer.valueOf(5));
+            classToIdMap.put(ObjectModel.getType(double[].class), Integer.valueOf(6));
+            classToIdMap.put(ObjectModel.getType(char[].class), Integer.valueOf(7));
             classToIdMap.put(ObjectModel.getType(Boolean.class), Integer.valueOf(8));
             classToIdMap.put(ObjectModel.getType(Byte.class), Integer.valueOf(9));
             classToIdMap.put(ObjectModel.getType(Short.class), Integer.valueOf(10));
@@ -45,14 +44,14 @@ public class RdmaClassIdManager{
         }
         counter = new AtomicInteger(18);
 
-        idToClassMap[0] = RVMType.BooleanType;
-        idToClassMap[1] = RVMType.ByteType;
-        idToClassMap[2] = RVMType.ShortType;
-        idToClassMap[3] = RVMType.IntType;
-        idToClassMap[4] = RVMType.LongType;
-        idToClassMap[5] = RVMType.FloatType;
-        idToClassMap[6] = RVMType.DoubleType;
-        idToClassMap[7] = RVMType.CharType;
+        idToClassMap[0] = ObjectModel.getType(boolean[].class);
+        idToClassMap[1] = ObjectModel.getType(byte[].class);
+        idToClassMap[2] = ObjectModel.getType(short[].class);
+        idToClassMap[3] = ObjectModel.getType(int[].class);
+        idToClassMap[4] = ObjectModel.getType(long[].class);
+        idToClassMap[5] = ObjectModel.getType(float[].class);
+        idToClassMap[6] = ObjectModel.getType(double[].class);
+        idToClassMap[7] = ObjectModel.getType(char[].class);
         idToClassMap[8] = ObjectModel.getType(Boolean.class);
         idToClassMap[9] = ObjectModel.getType(Byte.class);
         idToClassMap[10] = ObjectModel.getType(Short.class);
@@ -64,19 +63,15 @@ public class RdmaClassIdManager{
         idToClassMap[16] = ObjectModel.getType(String.class);
         idToClassMap[17] = ObjectModel.getType(Object.class);
 
-        for (int i = 0; i <=7; i++)
-            tibs[i] = 0L;
-        for (int i = 8; i < counter.get(); i++)
+        for (int i = 0; i < counter.get(); i++)
             tibs[i] = Magic.objectAsAddress(idToClassMap[i].getTypeInformationBlock()).toLong();
 
     }
     public static int registerClass(Class cls) {
         int ret;
         String className = cls.getCanonicalName();
-        if (Utils.enableLog)
-            Utils.log("registerClass get name: " + className);
         RVMType type = java.lang.JikesRVMSupport.getTypeForClass(cls);
-        ret = classToIdMap.get(type);
+        ret = (int)classToIdMap.get(type);
         if (ret != -1)
             return ret;
 
@@ -88,8 +83,7 @@ public class RdmaClassIdManager{
             System.exit(1);
         }
         idToClassMap[ret] = type;
-        //XXX assume a scalar type registered
-        Utils.ensureClassInitialized((RVMClass)type);
+        Utils.ensureClassInitialized(type);
         tibs[ret] = Magic.objectAsAddress(type.getTypeInformationBlock()).toLong();
         assert(tibs[ret] != 0L);
         if (cls.isEnum()) {
@@ -106,7 +100,7 @@ public class RdmaClassIdManager{
     }
 
     public static int query(RVMType type) {
-        return classToIdMap.get(type);
+        return (int)classToIdMap.get(type);
     }
 
     public static RVMType query(int id) {
@@ -114,7 +108,7 @@ public class RdmaClassIdManager{
     }
 
     public long queryTIB(RVMType type) {
-        return typeToRemoteTIB.getLong(type);
+        return typeToRemoteTIB.get(type);
     }
 
     public static Enum queryEnum(int id, int ordinal) {
@@ -127,7 +121,7 @@ public class RdmaClassIdManager{
         assert(counter.get() == tibs.length);
         try {
             for (int i = 0; i < tibs.length; i++) {
-                typeToRemoteTIB.putLong(idToClassMap[i], tibs[i]);
+                typeToRemoteTIB.put(idToClassMap[i], tibs[i]);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -149,32 +143,27 @@ public class RdmaClassIdManager{
     private static class SimpleRVMTypeHashTable {
         private final int SIZE = 512, MAXCOLI = 8;
         private final int KEY = 0, VALUE = 1;
-        private int[][][] table;
-        private long[][][] tableLong;
+        private long[][][] table = new long[SIZE][MAXCOLI][2];
 
-        public SimpleRVMTypeHashTable(int type) {
-            if (type == 0)
-                table = new int[SIZE][MAXCOLI][2];
-            else
-                tableLong = new long[SIZE][MAXCOLI][2];
-        }
-        public void put(RVMType type, Integer id) throws Exception{
-            int key = hash(type);
-            int d1 = key & (SIZE - 1);
+        public void put(RVMType type, long value) throws Exception {
+            long key = Magic.objectAsAddress(type).toLong();
+            int d1 = (int)key & (SIZE - 1);
             int d2;
             for (d2 = 0; d2 < MAXCOLI; d2++) {
                 if (table[d1][d2][KEY] == 0) {
                     table[d1][d2][KEY]= key;
-                    table[d1][d2][VALUE]= id;
+                    table[d1][d2][VALUE]= value;
                     break;
                 }
-                Utils.log("hashtable collision!");
+//                if (Utils.enableLog)
+//                    Utils.log("hashtable collision! " + type.getDescriptor() +
+//                            " with " + ((RVMType)Magic.addressAsObject(Address.fromLong(table[d1][d2][KEY]))).getDescriptor());
             }
             if (d2 == MAXCOLI) throw new Exception("MAXCOLISION");
         }
-        public int get(RVMType type) {
-            int key = hash(type);
-            int d1 = key & (SIZE - 1);
+        public long get(RVMType type) {
+            long key = Magic.objectAsAddress(type).toLong();
+            int d1 = (int)key & (SIZE - 1);
             for (int d2 = 0; d2 < MAXCOLI; d2++) {
                 if (table[d1][d2][KEY] == 0) {
                     return -1;
@@ -188,33 +177,6 @@ public class RdmaClassIdManager{
 
         private int hash(RVMType type) {
             return Magic.objectAsAddress(type).toInt();
-        }
-        public void putLong(RVMType type, long value) throws Exception{
-            int key = hash(type);
-            int d1 = key & (SIZE - 1);
-            int d2;
-            for (d2 = 0; d2 < MAXCOLI; d2++) {
-                if (tableLong[d1][d2][KEY] == 0) {
-                    tableLong[d1][d2][KEY]= key;
-                    tableLong[d1][d2][VALUE]= value;
-                    break;
-                }
-            }
-            if (d2 == MAXCOLI) throw new Exception("MAXCOLISION");
-        }
-
-        public long getLong(RVMType type) {
-            int key = hash(type);
-            int d1 = key & (SIZE - 1);
-            for (int d2 = 0; d2 < MAXCOLI; d2++) {
-                if (tableLong[d1][d2][KEY] == 0) {
-                    return -1;
-                }
-                if (tableLong[d1][d2][KEY] == key) {
-                    return tableLong[d1][d2][VALUE];
-                }
-            }
-            return -1L;
         }
     }
 }

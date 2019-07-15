@@ -13,6 +13,7 @@ public class LocalBuffer extends Buffer {
     public  int pointer;
     private LocalBuffer nextBuffer;
     private boolean consumed;
+    private int boundry;
     public void register(Endpoint ep) throws IOException {
         IbvMr mr = ep.registerMemory(start.toLong(), length.toInt()).execute().free().getMr();
         rkey = mr.getRkey();
@@ -24,11 +25,8 @@ public class LocalBuffer extends Buffer {
     public int getRkey() {
         return rkey;
     }
-    public void setLimit(int limit, boolean needGap) {
-        if (needGap) {
-            assert((limit & 7) == 4);
-            start.plus(limit).store(org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE);
-        }
+    public void setLimit(int limit) {
+        assert((limit & 7) == 0);
         this.limit = limit;
     }
 
@@ -43,11 +41,21 @@ public class LocalBuffer extends Buffer {
     public boolean reachLimit() {
         return pointer >= limit;
     }
-    public void markConsumed() {
-        consumed = true;
+
+    public void setBoundry(int boundry) {
+        this.boundry = boundry;
     }
+    public int getBoundry() {
+        return boundry;
+    }
+    @Inline
+    public boolean reachBoundry() {
+        if (boundry == 0)
+            return false;
+        return pointer >= boundry;
+    }
+
     public void release() {
-        if (Utils.enableLog)
             Utils.log("Localbuffer release addr: 0x " + Long.toHexString(start.toLong()));
         nextBuffer = null;
         ((SegregatedFreeListSpace)space).releaseMixedBlock(start);
@@ -58,10 +66,6 @@ public class LocalBuffer extends Buffer {
         long ret = start.plus(pointer).loadLong();
         pointer += 8;
         return ret;
-    }
-
-    public boolean isConsumed() {
-        return consumed;
     }
 
     public Address getJump() {
@@ -79,7 +83,7 @@ public class LocalBuffer extends Buffer {
         return (jump.GE(start) && jump.LT(start.plus(length)));
     }
     public void setPointer(Address jump) {
-        pointer = jump.diff(jump).toInt();
+        pointer = jump.diff(start).toInt();
     }
 
    

@@ -74,19 +74,19 @@ public class RPCClient {
             Utils.log("reserveBuffer start: " + Long.toHexString(msg.start) + " rpc time: " + (end - start));
     }
 
-    public void notifyBufferLimit(long bufferStart, int limit, boolean needGap) throws IOException{
+    public void notifyBufferLimit(long bufferStart, int limit, boolean isBoundry) throws IOException{
         if (startCount)
             notifyTimes++;
-        Request request = new Request(connectId, new Request.NotifyBufferLimitREQ(bufferStart, limit, needGap));
+        Request request = new Request(connectId, new Request.NotifyBufferLimitREQ(bufferStart, limit, isBoundry));
         Response response = new Response();
         long start = System.nanoTime();
         DaRPCFuture<Request, Response> future = stream.request(request, response, false);
         while (!future.isDone()) {}
         if (response.status != Response.SUCCESS)
-            throw new IOException("notify buffer limit rpc failed");
+            throw new IOException("notify buffer boundry rpc failed");
         long during = System.nanoTime() - start;
         if (Utils.enableLog)
-            Utils.log("notify buffer limit success rpc time: " + during);
+            Utils.log("notify buffer boundry success rpc time: " + during);
     }
 
     public void releaseAndReserve(RemoteBuffer buffer) throws IOException {

@@ -1,13 +1,11 @@
 package intruder;
 
 import com.ibm.disni.verbs.*;
-import org.jikesrvm.classloader.RVMClass;
 import org.jikesrvm.classloader.RVMType;
 import org.jikesrvm.runtime.Memory;
 import org.jikesrvm.runtime.RuntimeEntrypoints;
 import org.vmmagic.unboxed.Address;
 import org.vmmagic.unboxed.Extent;
-import org.jikesrvm.runtime.Magic;
 import org.vmmagic.unboxed.Offset;
 
 import java.io.IOException;
@@ -18,9 +16,13 @@ import static intruder.RdmaClassIdManager.SCALARTYPEMASK;
 public class Utils {
     static final int MAXSGEPERWR = 10;
     public static char[] hexArray = "0123456789ABCDEF".toCharArray();
-    static public void ensureClassInitialized(RVMClass cls) {
-        if (!cls.isInitialized())
-        RuntimeEntrypoints.initializeClassForDynamicLink(cls);
+    static public void ensureClassInitialized(RVMType type) {
+        if (!type.isInitialized()) {
+            if (type.isClassType()) {
+                RuntimeEntrypoints.initializeClassForDynamicLink(type.asClass());
+            } else
+                type.prepareForFirstUse();
+        }
     }
 
     static public RVMType ensureIdValid(int id) throws IOException {

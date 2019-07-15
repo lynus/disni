@@ -5,7 +5,6 @@ import org.jikesrvm.classloader.RVMType;
 import org.jikesrvm.objectmodel.JavaHeader;
 import org.jikesrvm.objectmodel.TIB;
 import org.jikesrvm.runtime.Magic;
-import org.mmtk.utility.Constants;
 import org.vmmagic.pragma.Inline;
 import org.vmmagic.pragma.Uninterruptible;
 import org.vmmagic.unboxed.Address;
@@ -13,7 +12,6 @@ import org.vmmagic.unboxed.AddressArray;
 import org.vmmagic.unboxed.ObjectReference;
 
 import static org.jikesrvm.classloader.RVMType.REFARRAY_OFFSET_ARRAY;
-import static org.jikesrvm.objectmodel.JavaHeaderConstants.ALIGNMENT_VALUE;
 @Uninterruptible
 public class ObjectModel {
     public final static int REF_OFFSET = 24;
@@ -23,7 +21,6 @@ public class ObjectModel {
     public final static int HEADER_SIZE = 16;
     public final static int ALIGNMENT = 8;
     public final static int ALIGNMENT_MASK = ALIGNMENT - 1;
-    public final static int MIN_ALIGNMENT = Constants.MIN_ALIGNMENT;
 
     @Inline
     public static RVMType getType(Class cls) {
@@ -34,36 +31,16 @@ public class ObjectModel {
         return Magic.objectAsAddress(obj).minus(REF_OFFSET);
     }
     @Inline
-    public static int getAlignedUpSize(RVMType type, Address header) {
-        if (type.isClassType()) {
-            return (type.asClass().getInstanceSize() + (MIN_ALIGNMENT - 1)) & ~(MIN_ALIGNMENT - 1);
-        } else {
-            int ele_num = (int)header.plus(ELEMENT_NUM_OFFSET).loadLong();
-            return type.asArray().getInstanceSize(ele_num) + (MIN_ALIGNMENT -1) & ~(MIN_ALIGNMENT -1);
-        }
-    }
-    @Inline
     public static int getAlignedUpSize(Object obj) {
         RVMType type = Magic.getObjectType(obj);
         if (type.isClassType()) {
-            return (type.asClass().getInstanceSize() + (MIN_ALIGNMENT - 1)) & ~(MIN_ALIGNMENT - 1);
+            return (type.asClass().getInstanceSize() + (ALIGNMENT - 1)) & ~ALIGNMENT_MASK;
         } else {
             int ele_num = (int)Magic.objectAsAddress(obj).minus(8).loadLong();
-            return type.asArray().getInstanceSize(ele_num) + (MIN_ALIGNMENT -1) & ~(MIN_ALIGNMENT -1);
+            return (type.asArray().getInstanceSize(ele_num) + (ALIGNMENT -1)) & ~ALIGNMENT_MASK;
         }
     }
-    @Inline
-    public static int getMaximumAlignedSize(Object obj) {
-        //for x86-64, alignment is 8, MIN_ALIGNMENT is 4.
-        //see org.mmtk.utility.alloc.Allocator.getMaximumAlignedSize()
-        return getAlignedUpSize(obj) + 4;
-    }
 
-    @Inline
-    public static int alignObjectAllocation(int head) {
-        int delta = (-head - OBJECT_OFFSET_ALIGN) & ALIGNMENT_MASK;
-        return head + delta;
-    }
     //skip over header
     @Inline
     public static int copyObject(Object object, Address start) {
@@ -87,23 +64,13 @@ public class ObjectModel {
         RVMType type = Magic.getObjectType(object);
         return type.getDimensionality();
     }
-    @Inline
-    public static void setRegisteredID(Object object, Address start) {
-        int id = Factory.query(object.getClass());
-        assert(id != -1);
-        int dimension = getDimension(object);
-        HeaderEncoding.setObjctType(start, id, dimension);
-    }
 
     @Inline
     public static void setRemoteTIB(RdmaClassIdManager idManager, Object object, Address start) {
        RVMType type = Magic.getObjectType(object);
        long tib = idManager.queryTIB(type);
+       assert(tib != -1);
        start.store(tib);
-    }
-    @Inline
-    public static void fillGap(Address addr) {
-        addr.store(ALIGNMENT_VALUE);
     }
     @Inline
     public static Object initializeHeader(Address ptr) {

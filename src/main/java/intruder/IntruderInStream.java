@@ -6,10 +6,11 @@ import org.vmmagic.unboxed.Address;
 import java.io.IOException;
 
 public class IntruderInStream extends Stream {
-    private LocalBuffer firstBuffer, lastBuffer, currentBuffer;
+    private LocalBuffer firstBuffer, lastBuffer, currentBuffer, noBoundryBuffer;
     public LocalBuffer retireBuffer;
     private volatile boolean finish = false;
     private boolean useHandle = false;
+    public boolean debug = false;
     public IntruderInStream(Endpoint ep) throws IOException {
         super(ep);
         RPCService.setHost(ep.serverHost);
@@ -19,25 +20,42 @@ public class IntruderInStream extends Stream {
     public Object readObject() throws IOException {
         Object root;
         while(currentBuffer == null) {}
-        if (currentBuffer.reachLimit()) {
-            while(!currentBuffer.isConsumed() && currentBuffer.reachLimit()) {}
-            if (currentBuffer.isConsumed()) {
-                LocalBuffer _buffer = currentBuffer.getNextBuffer();
-                while (_buffer == null)
-                    _buffer = currentBuffer.getNextBuffer();
-                currentBuffer = _buffer;
+        while (true) {
+            if (currentBuffer.getBoundry() == 0) {
+                if (currentBuffer.reachLimit()) {
+                    continue;
+                } else
+                    break;
+            } else {
+                if (currentBuffer.reachBoundry()) {
+                    currentBuffer = currentBuffer.getNextBuffer();
+                    assert(currentBuffer != null);
+                    continue;
+                } else
+                    break;
             }
         }
         Address jump = currentBuffer.getJump();
-        if (currentBuffer.reachLimit()) {
+        if (currentBuffer.reachBoundry()) {
             currentBuffer = currentBuffer.getNextBuffer();
+            Utils.log("jump to next buffer 0x" + Long.toHexString(currentBuffer.getStart().toLong()));
             assert (currentBuffer != null);
+            while (currentBuffer.reachLimit()) {}
         }
         root = currentBuffer.getRoot();
         assert(root != null);
         assert((jump.toLong() & 7) ==0);
-        if (jump.loadLong() != Stream.ROOTMARKER)
-            throw new IOException("expedted ROOT MARKER");
+        long tmp = jump.loadLong();
+        while (tmp != Stream.ROOTMARKER) {
+//            try {
+//                Thread.sleep(2000);
+//            } catch (InterruptedException ex) {}
+            Utils.peekBytes("localbuffer", jump, 0, 48, 3);
+            Utils.log("expected ROOT MARKER addr 0x" + Long.toHexString(jump.toLong()) +
+                    " delta: " + jump.diff(currentBuffer.getStart()).toLong()
+                    + " value " + Long.toHexString(jump.loadLong()) + " tmp " + tmp);
+            tmp = jump.loadLong();
+        }
         if (currentBuffer.inRange(jump)) {
             currentBuffer.setPointer(jump.plus(8));
         } else {
@@ -58,6 +76,7 @@ public class IntruderInStream extends Stream {
             firstBuffer = _buffer;
             lastBuffer = _buffer;
             currentBuffer = _buffer;
+            noBoundryBuffer = _buffer;
         }
             lastBuffer.setNextBuffer(_buffer);
             lastBuffer = _buffer;
@@ -66,6 +85,13 @@ public class IntruderInStream extends Stream {
     public LocalBuffer getLastBuffer() {
         return lastBuffer;
     }
+    public LocalBuffer getNoBoundryBuffer() {
+        return noBoundryBuffer;
+    }
+
+    public void nextNoBoundryBuffer() {
+        noBoundryBuffer = noBoundryBuffer.getNextBuffer();
+        assert(noBoundryBuffer != null); }
 
     public void setFinish() {
         finish = true;

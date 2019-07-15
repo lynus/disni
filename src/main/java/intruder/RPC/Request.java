@@ -129,7 +129,7 @@ public class Request implements DaRPCMessage {
     public static class NotifyBufferLimitREQ implements  REQ{
         private int limit;
         private long bufferStart;
-        private boolean needGap;
+        private boolean isBoundry;
         public int type() {
             return NOTIFY_BUFFER_LIMIT_CMD;
         }
@@ -139,19 +139,19 @@ public class Request implements DaRPCMessage {
         public int write(ByteBuffer buffer) {
             buffer.putInt(limit);
             buffer.putLong(bufferStart);
-            buffer.put(needGap? (byte)1:(byte)0);
+            buffer.put(isBoundry ? (byte)1:(byte)0);
             return size();
         }
 
         public void update(ByteBuffer buffer) {
             limit = buffer.getInt();
             bufferStart = buffer.getLong();
-            needGap = buffer.get() == 1;
+            isBoundry = buffer.get() == 1;
         }
-        public NotifyBufferLimitREQ(long bufferStart, int limit, boolean needGap) {
+        public NotifyBufferLimitREQ(long bufferStart, int limit, boolean isBoundry) {
             this.limit = limit;
             this.bufferStart = bufferStart;
-            this.needGap = needGap;
+            this.isBoundry = isBoundry;
         }
 
         public long getBufferStart() {
@@ -162,8 +162,8 @@ public class Request implements DaRPCMessage {
             return limit;
         }
 
-        public boolean needGap() {
-            return needGap;
+        public boolean isBoundry() {
+            return isBoundry;
         }
 
         public NotifyBufferLimitREQ() {}

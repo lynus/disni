@@ -2,16 +2,18 @@ package intruder;
 
 import com.ibm.disni.util.MemoryUtils;
 import intruder.RPC.RPCClient;
-import org.vmmagic.pragma.Inline;
 import org.vmmagic.unboxed.Address;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class StageBuffer {
+    private final int bufferNum = 8;
     private RemoteBuffer current, last;
     private RPCClient rpcClient;
-    private ByteBuffer buffer;
+    private ByteBuffer buffer[] = new ByteBuffer[bufferNum];
+    private int _lkeys[] = new int[bufferNum];
+    private int bufferIndex = 0;
     private int length, lkey;
     private Address start;
     private int head;
@@ -19,25 +21,19 @@ public class StageBuffer {
     private RdmaClassIdManager idManager = new RdmaClassIdManager();
     public StageBuffer(RPCClient rpcClient, Endpoint ep) throws IOException {
         int size = Buffer.getBufferSize() * 2;
-        buffer = ByteBuffer.allocateDirect(size);
+        for (int i = 0; i < bufferNum; i++) {
+            buffer[i] = ByteBuffer.allocateDirect(size);
+            _lkeys[i] = ep.registerMemory(buffer[i]).execute().free().getMr().getLkey();
+        }
         length = size;
-        start = Address.fromLong(MemoryUtils.getAddress(buffer));
-        lkey = ep.registerMemory(buffer).execute().free().getMr().getLkey();
+        start = Address.fromLong(MemoryUtils.getAddress(buffer[bufferIndex]));
+        lkey = _lkeys[bufferIndex];
         this.rpcClient = rpcClient;
         this.ep = ep;
         current = RemoteBuffer.reserveBuffer(rpcClient, ep);
         rpcClient.getRemoteTIB(idManager);
     }
 
-    @Inline
-    private int alignAlloc() {
-        assert((head & ObjectModel.MIN_ALIGNMENT - 1) == 0);
-        int ret = ObjectModel.alignObjectAllocation(head);
-        if (ret != head) {
-            ObjectModel.fillGap(start.plus(head));
-        }
-        return ret;
-    }
     public Address reserveOneSlot() throws IOException{
         assert((head & 7) == 0);
         reserve(8);
@@ -47,9 +43,14 @@ public class StageBuffer {
     }
 
     public void reserve(int size) throws IOException {
+        if (last != null) {
+            assert(current.freeSpace() > head + size - (last.boundry - last.lastFlush));
+            return;
+        }
         if (current.freeSpace() < head + size) {
-            assert(last == null);
-            current.setLimit(head);
+            Utils.log("reserve: current buffer cannot reserve head: " + head + " current address: "
+                    + Long.toHexString(current.start.toLong()) + " free: " + current.freeSpace());
+            current.setBoundry(head);
             last = current;
             current = RemoteBuffer.reserveBuffer(rpcClient, ep);
         }
@@ -59,32 +60,25 @@ public class StageBuffer {
         return RemoteBuffer.getRemoteAddress(ptr, last, current);
     }
     public int fillRootMarker() throws IOException {
-        reserve(8 + 4);
-        int aligned = alignAlloc();
-        start.plus(aligned).store(Stream.ROOTMARKER);
-        head = aligned + 8;
-        return aligned;
-    }
-    public Address fillEnum(Enum e) throws IOException {
-        reserve(8 + 4);
-        int aligned = alignAlloc();
-        Address ret = RemoteBuffer.getRemoteAddress(aligned, last, current);
-        int id = Factory.query(e.getClass());
-        HeaderEncoding.setEnumType(start.plus(aligned), id, e.ordinal());
-        head = aligned + 8;
-        assert (head < length);
+        reserve(8);
+        start.plus(head).store(Stream.ROOTMARKER);
+        if (IntruderOutStream.debug)
+            Utils.log("fillRootMark head: " + head + " remote addr: 0x" +
+                    Long.toHexString(RemoteBuffer.getRemoteAddress(head, last, current).toLong()));
+
+        int ret = head;
+        head += 8;
         return ret;
     }
 
     public Address fillObject(Object object) throws IOException {
-        int size = ObjectModel.getAlignedUpSize(object) + 4;
+        int size = ObjectModel.getAlignedUpSize(object);
         reserve(size);
-        int aligned = alignAlloc();
-        Address ret = RemoteBuffer.getRemoteAddress(aligned, last, current);
-        ObjectModel.copyObject(object, start.plus(aligned));
+        Address ret = RemoteBuffer.getRemoteAddress(head, last, current);
+        ObjectModel.copyObject(object, start.plus(head));
 //        ObjectModel.setRegisteredID(object, start.plus(aligned));
-        ObjectModel.setRemoteTIB(idManager, object, start.plus(aligned));
-        head = aligned + size;
+        ObjectModel.setRemoteTIB(idManager, object, start.plus(head));
+        head += size;
         assert(head < length);
         return ret;
     }
@@ -95,26 +89,27 @@ public class StageBuffer {
 
     public void mayFlush() throws IOException {
         if (last != null) {
-            if (Utils.enableLog)
-                Utils.log("last remmote buffer exists, start flushing");
+            Utils.log("last remmote buffer exists, start flushing");
             flush();
         }
     }
 
     public void flush() throws IOException {
         if (last != null) {
-            assert (last.limit != 0);
-            assert (head > last.limit - last.lastFlush);
+            assert (last.boundry != 0);
+            assert (head > last.boundry - last.lastFlush);
             assert (current.lastFlush == 0);
             RemoteBuffer.writeTwoBuffer(ep, start, head, lkey,last, current);
             last = null;
         } else {
-            assert(current.limit == 0);
-            assert(head >= current.lastFlush);
+            assert(current.boundry == 0);
             current.write(ep, start, head, lkey);
         }
         head = 0;
-        Utils.zeroMemory(start, length);
+//        Utils.zeroMemory(start, length);
+        bufferIndex = (bufferIndex + 1) % bufferNum;
+        start = Address.fromLong(MemoryUtils.getAddress(buffer[bufferIndex]));
+        lkey = _lkeys[bufferIndex];
     }
     public void printStats() {
         Utils.log("=========stage buffer stats========");

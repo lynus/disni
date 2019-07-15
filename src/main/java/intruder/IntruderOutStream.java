@@ -16,6 +16,7 @@ public class IntruderOutStream extends Stream{
     private intruder.Queue queue = new intruder.Queue(512);
     private Object[] refArray = new Object[32];
     private AddressArray slotArray = AddressArray.create(32);
+    public static boolean debug = false;
     public IntruderOutStream(Endpoint ep) throws IOException{
         super(ep);
         rpcClient = new RPCClient(connectionId);
@@ -46,7 +47,7 @@ public class IntruderOutStream extends Stream{
     public void writeObject(Object object) throws IOException {
         Address jumpSlot = stageBuffer.reserveOneSlot();
         if (object.getClass().isEnum()) {
-            stageBuffer.fillEnum((Enum)object);
+//            stageBuffer.fillEnum((Enum)object);
             int marker = stageBuffer.fillRootMarker();
             jumpSlot.store(stageBuffer.getRemoteAddress(marker));
             stageBuffer.mayFlush();
@@ -77,9 +78,9 @@ public class IntruderOutStream extends Stream{
                 }
             }
             if (object.getClass().isEnum()) {
-                Address remoteAddress = stageBuffer.fillEnum((Enum)object);
-                if (!slot.isZero())
-                    slot.store(remoteAddress);
+//                Address remoteAddress = stageBuffer.fillEnum((Enum)object);
+//                if (!slot.isZero())
+//                    slot.store(remoteAddress);
                 continue;
             }
             Address remoteAddress = stageBuffer.fillObject(object);
@@ -109,6 +110,8 @@ public class IntruderOutStream extends Stream{
             }
         }
         int marker = stageBuffer.fillRootMarker();
+        if (debug)
+            Utils.log("jump to: 0x" + Long.toHexString(stageBuffer.getRemoteAddress(marker).toLong()));
         jumpSlot.store(stageBuffer.getRemoteAddress(marker));
         stageBuffer.mayFlush();
     }

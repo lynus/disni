@@ -60,9 +60,6 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
         } else {
             switch (request.cmd) {
             case Request.RESERVE_BUFFER_CMD:
-                buffer = inStream.getLastBuffer();
-                if (buffer != null)
-                    buffer.markConsumed();
                 buffer = inStream.getLocalBuffer();
                 try {
                     Buffer.allocate(buffer);
@@ -77,22 +74,31 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
             case Request.NOTIFY_BUFFER_LIMIT_CMD:
                 int limit = request.notifyBufferLimitREQ.getLimit();
                 long bufferStart = request.notifyBufferLimitREQ.getBufferStart();
-                boolean needGap = request.notifyBufferLimitREQ.needGap();
-                buffer = inStream.getLastBuffer();
-                Utils.log("notify limit start: 0x" + Long.toHexString(bufferStart) + " limit: " + limit);
-                if (buffer.getStart().toLong() != bufferStart) {
-                    response.fail(Request.NOTIFY_BUFFER_LIMIT_CMD);
-                    break;
+                boolean isBoundry = request.notifyBufferLimitREQ.isBoundry();
+                if (isBoundry) {
+                    Utils.log("notify boundry start: 0x" + Long.toHexString(bufferStart) + " boundry: " + limit);
+                    buffer = inStream.getNoBoundryBuffer();
+                    assert(buffer.getBoundry() == 0);
+                    if (bufferStart != buffer.getStart().toLong()) {
+                        Utils.log("current noboundry buffer addr: 0x" + Long.toHexString(buffer.getStart().toLong())
+                                + " rpc buffer addr: 0x" + Long.toHexString(bufferStart));
+                        response.fail(Request.NOTIFY_BUFFER_LIMIT_CMD);
+                        break;
+                    }
+                    buffer.setBoundry(limit);
+                    inStream.nextNoBoundryBuffer();
+                } else {
+                    Utils.log("notify limit start: 0x" + Long.toHexString(bufferStart) + " boundry: " + limit);
+                    buffer = inStream.getLastBuffer();
+                    if (bufferStart != buffer.getStart().toLong()) {
+                        Utils.log("last buffer addr: 0x" + Long.toHexString(buffer.getStart().toLong())
+                                + " rpc buffer addr: 0x" + Long.toHexString(bufferStart));
+                        response.fail(Request.NOTIFY_BUFFER_LIMIT_CMD);
+                        break;
+                    }
+                    buffer.setLimit(limit);
                 }
-                buffer.setLimit(limit, needGap);
                 response.setNotifyBufferLimitRES(new Response.NotifyBufferLimitRES());
-                if (Utils.enableLog) {
-                    if (needGap)
-                        Utils.log("rpc limit: " + limit + " gap filled");
-                    else
-                        Utils.log("rpc limit: " + limit);
-                }
-                //buffer.peekBytes(0, 64, 3);
                 break;
             case Request.RELEASE_AND_RESERVE_CMD:
                 break;

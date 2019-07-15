@@ -31,17 +31,21 @@ public class Client {
         target.d = 'y';
         outStream.writeObject(target);
         outStream.flush();
-        System.in.read();
-        Integer N = 1024;
+        Integer N = 5300;
         outStream.writeObject(N);
+        outStream.flush();
         Random rand = new Random();
         for (int i = 0; i < N; i++) {
-            long[] array = generateRandomLongArray(1 + rand.nextInt(4097));
+//            long[] array = generateRandomLongArray(1 + rand.nextInt(4097));
+            long[] array = generateRandomLongArray(1 + rand.nextInt(101));
+//            long[] array = generateRandomLongArray(60);
 //            Utils.log("#" + i + " digest: " + Long.toHexString(array[0]));
+//            if (i == 5207)
+//                outStream.debug = true;
             outStream.writeObject(array);
         }
         outStream.flush();
-
+        System.in.read();
         TargetRefObject[] array = new TargetRefObject[8];
         TargetRefObject ele = new TargetRefObject();
         ele.ref2 = new TargetPrimitiveObject();

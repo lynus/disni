@@ -14,7 +14,7 @@ public class RemoteBuffer extends Buffer{
     protected int RKey;
     protected int begin;
     protected RPCClient rpcClient;
-    public int limit;
+    public int boundry;
     public int lastFlush;
     public void setup(int RKey, long address, int size, RPCClient rpcClient) {
         this.RKey = RKey;
@@ -34,19 +34,30 @@ public class RemoteBuffer extends Buffer{
         return length.toInt() - lastFlush;
     }
 
-    public void setLimit(int stageHead) {
-        this.limit = stageHead;
+    public void setBoundry(int stageHead) {
+        this.boundry = stageHead + lastFlush;
     }
 
     public static Address getRemoteAddress(int stagHead, RemoteBuffer last, RemoteBuffer current) {
         if (last != null) {
-            assert (last.limit != 0);
+            assert (last.boundry != 0);
             assert(current.lastFlush == 0);
-            stagHead -= last.limit - last.lastFlush;
-            return current.start.plus(stagHead);
+            stagHead -= last.boundry - last.lastFlush;
+            Address ret = current.start.plus(stagHead);
+            if (ret.toLong() == 0xc00fffdced8L) {
+                Thread.dumpStack();
+                System.exit(1);
+            }
+            return ret;
         } else {
             assert(current.lastFlush + stagHead  <= current.length.toInt());
-            return current.start.plus(current.lastFlush + stagHead);
+            Address ret = current.start.plus(current.lastFlush + stagHead);
+            if (ret.toLong() == 0xc00fffdced8L) {
+                Utils.log("stage head: " + stagHead);
+                Thread.dumpStack();
+//                System.exit(1);
+            }
+            return ret;
         }
 
     }
@@ -60,6 +71,8 @@ public class RemoteBuffer extends Buffer{
         sge.setLkey(lkey);
         sendWR.getRdma().setRkey(RKey);
         sendWR.getRdma().setRemote_addr(start.toLong() + lastFlush);
+        Utils.log("assembleWR local addr 0x" + Long.toHexString(rBufferStart.toLong()) +
+                " remote addr 0x" + Long.toHexString(start.plus(lastFlush).toLong()) + " length: " + rBufferLength);
         return sendWR;
     }
 
@@ -79,9 +92,10 @@ public class RemoteBuffer extends Buffer{
     }
 
     public static void writeTwoBuffer(Endpoint ep, Address stageBuffer, int stageHead, int lkey, RemoteBuffer last, RemoteBuffer current) throws IOException{
-        IbvSendWR sendWRLast = last.assembleWR(stageBuffer, last.limit - last.lastFlush, lkey);
-        int remain = stageHead - (last.limit - last.lastFlush);
-        IbvSendWR sendWRCurrent = current.assembleWR(stageBuffer, remain, lkey);
+        int last_size = last.boundry - last.lastFlush;
+        IbvSendWR sendWRLast = last.assembleWR(stageBuffer, last_size, lkey);
+        int remain = stageHead - last_size;
+        IbvSendWR sendWRCurrent = current.assembleWR(stageBuffer.plus(last_size), remain, lkey);
         LinkedList<IbvSendWR> list = new LinkedList<IbvSendWR>();
         list.add(sendWRLast);
         list.add(sendWRCurrent);
@@ -93,18 +107,21 @@ public class RemoteBuffer extends Buffer{
         } catch (InterruptedException ex) {
         }
         last.notifyLimit();
-        current.notifyLimit();
         current.lastFlush = remain;
+        current.notifyLimit();
     }
 
 
-    //notify remote host the limit pointer of this buffer
+    //notify remote host the boundry pointer of this buffer
     public void notifyLimit() throws IOException{
-        if ((lastFlush & 7) == 4) {
-            rpcClient.notifyBufferLimit(start.toLong(), lastFlush, true);
-            lastFlush += 4;
-        } else
+        if (boundry != 0) {
+            assert ((boundry & 7) == 0);
+            rpcClient.notifyBufferLimit(start.toLong(), boundry, true);
+        } else {
+            //lastFlush is update before calling this
+            assert((lastFlush & 7) == 0);
             rpcClient.notifyBufferLimit(start.toLong(), lastFlush, false);
+        }
     }
 
     public void reserve() throws IOException {
