@@ -110,4 +110,8 @@ public class IntruderInStream extends Stream {
     public void notifyReady() {
         ready = true;
     }
+
+    public boolean isReady() {
+        return ready;
+    }
 }

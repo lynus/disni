@@ -131,7 +131,7 @@ public class RdmaClassIdManager{
     public Address queryEnumRemoteAddress(Enum obj) {
         RVMType enumType = ObjectModel.getType(obj.getDeclaringClass());
         Address base = Address.fromLong(enumToRemoteAddress.get(enumType));
-        return base.plus(obj.ordinal()).loadAddress();
+        return base.plus(obj.ordinal() * 8).loadAddress();
     }
 
 

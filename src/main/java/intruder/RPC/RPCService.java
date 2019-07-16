@@ -108,13 +108,10 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 break;
             case Request.WAIT_FINISH_CMD:
                 response.setWaitFinishRES(new Response.WaitFinishRES());
-                while(true) {
-                    if (!inStream.isFinish()) {}
-                    else {
-                        inStream.setUnfinish();
-                        break;
-                    }
-                }
+//                assert (!inStream.isFinish());
+                while (!inStream.isFinish()) {}
+                inStream.setUnfinish();
+                break;
             case Request.GET_TIB_CMD:
                 if (Utils.enableLog)
                     Utils.log("rpc GET_TIB called");
@@ -126,6 +123,7 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 response.setGetEnumRES(new Response.GetEnumRES(RdmaClassIdManager.getEnumAddresses(), RdmaClassIdManager.getEnumCounter()));
                 break;
             case Request.NOTIFY_READY_CMD:
+                assert (!inStream.isReady());
                 inStream.notifyReady();
                 response.setNotifyReadyRES(new Response.NotifyReadyRES());
                 break;
