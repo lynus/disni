@@ -109,6 +109,15 @@ public class RPCClient {
         if (response.status != Response.SUCCESS)
             throw new IOException("wait finish rpc failed");
     }
+    public void notifyReady() throws IOException {
+        Request request = new Request(connectId, new Request.NotifyReadyREQ());
+        Response response = new Response();
+        DaRPCFuture<Request, Response> future = stream.request(request, response, false);
+        while (!future.isDone()) {}
+        if (response.status != Response.SUCCESS)
+            throw new IOException("wait finish rpc failed");
+
+    }
     public void getRemoteTIB(RdmaClassIdManager idManager) throws IOException {
         Request request = new Request(connectId, new Request.GetTIBREQ());
         Response response = new Response();

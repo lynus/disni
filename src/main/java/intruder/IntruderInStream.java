@@ -11,6 +11,7 @@ public class IntruderInStream extends Stream {
     private volatile boolean finish = false;
     private boolean useHandle = false;
     public boolean debug = false;
+    private volatile boolean ready = false;
     public IntruderInStream(Endpoint ep) throws IOException {
         super(ep);
         RPCService.setHost(ep.serverHost);
@@ -101,5 +102,12 @@ public class IntruderInStream extends Stream {
     }
     public boolean isFinish() {
         return finish;
+    }
+    public void spin() {
+        while (!ready) {}
+        ready = false;
+    }
+    public void notifyReady() {
+        ready = true;
     }
 }

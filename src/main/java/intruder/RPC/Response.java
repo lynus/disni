@@ -21,6 +21,7 @@ public class Response implements DaRPCMessage {
     public WaitFinishRES waitFinishRES;
     public GetTIBRES getTIBRES;
     public GetEnumRES getEnumRES;
+    public NotifyReadyRES notifyReadyRES;
 
     public void setReserveBufferRES(ReserveBufferRES reserveBufferRES) {
         this.reserveBufferRES = reserveBufferRES;
@@ -57,6 +58,12 @@ public class Response implements DaRPCMessage {
         status = SUCCESS;
     }
 
+    public void setNotifyReadyRES(NotifyReadyRES notifyReadyRES) {
+        this.notifyReadyRES = notifyReadyRES;
+        cmd = notifyReadyRES.type();
+        status = SUCCESS;
+    }
+
     @Override
     public int write(ByteBuffer buffer) throws IOException {
         buffer.putInt(cmd);
@@ -81,6 +88,9 @@ public class Response implements DaRPCMessage {
                     break;
                 case GET_ENUM_CMD:
                     written += getEnumRES.write(buffer);
+                    break;
+                case NOTIFY_READY_CMD:
+                    written += notifyReadyRES.write(buffer);
                     break;
             }
         }
@@ -117,6 +127,10 @@ public class Response implements DaRPCMessage {
             case GET_ENUM_CMD:
                 getEnumRES = new GetEnumRES();
                 getEnumRES.update(buffer);
+                break;
+            case NOTIFY_READY_CMD:
+                notifyReadyRES = new NotifyReadyRES();
+                notifyReadyRES.update(buffer);
                 break;
         }
     }
@@ -260,6 +274,12 @@ public class Response implements DaRPCMessage {
     public static class WaitFinishRES extends  NoPayLoad implements RES {
         public int type() {
             return WAIT_FINISH_CMD;
+        }
+    }
+
+    public static class NotifyReadyRES extends NoPayLoad implements RES {
+        public int type() {
+            return NOTIFY_READY_CMD;
         }
     }
 }

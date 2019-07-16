@@ -125,6 +125,10 @@ public class RPCService extends Protocol implements DaRPCService<Request, Respon
                 Utils.log("rpc GET_ENUM called");
                 response.setGetEnumRES(new Response.GetEnumRES(RdmaClassIdManager.getEnumAddresses(), RdmaClassIdManager.getEnumCounter()));
                 break;
+            case Request.NOTIFY_READY_CMD:
+                inStream.notifyReady();
+                response.setNotifyReadyRES(new Response.NotifyReadyRES());
+                break;
             }
         }
         event.triggerResponse();

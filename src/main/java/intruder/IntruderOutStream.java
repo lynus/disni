@@ -36,6 +36,9 @@ public class IntruderOutStream extends Stream{
     public void disableHandle() {
         this.useHandle = false;
     }
+    public void notifyReady() throws IOException{
+        rpcClient.notifyReady();
+    }
     public void waitRemoteFinish() throws IOException{
         rpcClient.waitRemoteFinish();
     }

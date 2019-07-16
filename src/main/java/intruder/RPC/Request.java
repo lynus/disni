@@ -12,6 +12,7 @@ public class Request implements DaRPCMessage {
     public final static int WAIT_FINISH_CMD = 4;
     public final static int GET_TIB_CMD = 5;
     public final static int GET_ENUM_CMD = 6;
+    public final static int NOTIFY_READY_CMD = 7;
     private final static int SIZE = 8 + 16;
     public int cmd, connectId;
     public ReserveBufferREQ reserveBufferREQ;
@@ -20,6 +21,7 @@ public class Request implements DaRPCMessage {
     public WaitFinishREQ waitFinishREQ;
     public GetTIBREQ getTIBREQ;
     public GetEnumREQ getEnumREQ;
+    public NotifyReadyREQ notifyReadyREQ;
     public Request() {}
     public Request(int connectId, ReserveBufferREQ reserveBufferREQ) {
         this.connectId = connectId;
@@ -57,6 +59,12 @@ public class Request implements DaRPCMessage {
         this.getEnumREQ = getEnumREQ;
     }
 
+    public Request(int connectId, NotifyReadyREQ notifyReadyREQ) {
+        this.connectId = connectId;
+        this.cmd = notifyReadyREQ.type();
+        this.notifyReadyREQ = notifyReadyREQ;
+    }
+
     @Override
     public int write(ByteBuffer buffer) throws IOException {
         buffer.putInt(connectId);
@@ -80,6 +88,10 @@ public class Request implements DaRPCMessage {
                 break;
             case GET_ENUM_CMD:
                 written += getEnumREQ.write(buffer);
+                break;
+            case NOTIFY_READY_CMD:
+                written += notifyReadyREQ.write(buffer);
+                break;
         }
         return written;
     }
@@ -111,6 +123,10 @@ public class Request implements DaRPCMessage {
             case GET_ENUM_CMD:
                 this.getEnumREQ = new GetEnumREQ();
                 getEnumREQ.update(buffer);
+                break;
+            case NOTIFY_READY_CMD:
+                this.notifyReadyREQ = new NotifyReadyREQ();
+                notifyReadyREQ.update(buffer);
                 break;
         }
     }
@@ -223,6 +239,11 @@ public class Request implements DaRPCMessage {
     public static class GetEnumREQ extends NOPayLoad implements REQ {
         public int type() {
             return GET_ENUM_CMD;
+        }
+    }
+    public static class NotifyReadyREQ extends NOPayLoad implements REQ {
+        public int type() {
+            return NOTIFY_READY_CMD;
         }
     }
 }
