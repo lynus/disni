@@ -40,6 +40,13 @@ public class ObjectModel {
             return (type.asArray().getInstanceSize(ele_num) + (ALIGNMENT -1)) & ~ALIGNMENT_MASK;
         }
     }
+    @Inline
+    public static int getAlignedUpsize(Class cls) {
+        RVMType type = getType(cls);
+        if (type.isArrayType())
+            return 0;
+        return (type.asClass().getInstanceSize() + (ALIGNMENT - 1)) & ~ALIGNMENT_MASK;
+    }
 
     //skip over header
     @Inline
@@ -50,7 +57,7 @@ public class ObjectModel {
     }
 
     @Inline
-    private static void memcopy(Address dst, Address src, int size) {
+    public static void memcopy(Address dst, Address src, int size) {
         Address end = src.plus(size);
         while (src.LT(end)) {
             dst.store(src.loadInt());
@@ -73,6 +80,15 @@ public class ObjectModel {
            Utils.log("setRemoteTIB fail type: " + type.getDescriptor());
        assert(tib != -1);
        start.store(tib);
+    }
+    @Inline
+    public static void setRemoteTIB(RdmaClassIdManager idManager, Class cls, Address start) {
+        RVMType type = getType(cls);
+        long tib = idManager.queryTIB(type);
+//        if (tib == -1)
+//            Utils.log("setRemoteTIB fail type: " + type.getDescriptor());
+        assert(tib != -1);
+        start.store(tib);
     }
     @Inline
     public static Object initializeHeader(Address ptr) {

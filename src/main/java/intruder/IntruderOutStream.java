@@ -119,6 +119,15 @@ public class IntruderOutStream extends Stream{
         jumpSlot.store(stageBuffer.getRemoteAddress(marker));
         stageBuffer.mayFlush();
     }
+    public void writeObject(Writable object) throws IOException {
+        Address jumpSlot = stageBuffer.reserveOneSlot();
+        object.write(stageBuffer);
+        int marker = stageBuffer.fillRootMarker();
+        if (debug)
+            Utils.log("jump to: 0x" + Long.toHexString(stageBuffer.getRemoteAddress(marker).toLong()));
+        jumpSlot.store(stageBuffer.getRemoteAddress(marker));
+        stageBuffer.mayFlush();
+    }
 
     public void flush() throws IOException {
         stageBuffer.flush();

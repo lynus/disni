@@ -2,6 +2,7 @@ package intruder;
 
 import com.ibm.disni.util.MemoryUtils;
 import intruder.RPC.RPCClient;
+import org.vmmagic.pragma.Inline;
 import org.vmmagic.unboxed.Address;
 import org.vmmagic.unboxed.AddressArray;
 
@@ -35,73 +36,85 @@ public class StageBuffer {
         rpcClient.getRemoteTIB(idManager);
         rpcClient.getRemoteEnum(idManager);
     }
-
+    @Inline
     public Address reserveOneSlot() throws IOException{
+//        if ((head & 7) != 0)
+//            Utils.log("head " + head);
         assert((head & 7) == 0);
-        reserve(8);
-        Address ret = start.plus(head);
-        head += 8;
-        return ret;
+        return reserve(8);
     }
-
-    public void reserve(int size) throws IOException {
+    @Inline
+    public Address reserve(int size) throws IOException {
         if (last != null) {
             assert(current.freeSpace() > head + size - (last.boundry - last.lastFlush));
-            return;
-        }
-        if (current.freeSpace() < head + size) {
-            if (Utils.enableLog)
-                Utils.log("reserve: current buffer cannot reserve head: " + head + " current address: "
-                        + Long.toHexString(current.start.toLong()) + " free: " + current.freeSpace());
-            current.setBoundry(head);
-            last = current;
-            current = RemoteBuffer.reserveBuffer(rpcClient, ep);
-        }
-    }
+        } else {
+            if (current.freeSpace() < head + size) {
+                if (Utils.warming) {
+                    head = 0;
+                }
+                if (Utils.enableLog)
+                    Utils.log("reserve: current buffer cannot reserve head: " + head + " current address: "
+                            + Long.toHexString(current.start.toLong()) + " free: " + current.freeSpace()
+                            + " size: " + size);
+                current.setBoundry(head);
+                last = current;
+                current = RemoteBuffer.reserveBuffer(rpcClient, ep);
 
+            }
+        }
+        Address ret = start.plus(head);
+        head += size;
+        return ret;
+    }
+    @Inline
     public Address getRemoteAddress(int ptr) {
         return RemoteBuffer.getRemoteAddress(ptr, last, current);
     }
+    @Inline
+    public Address getRemoteAddress(Address ptr) {
+        return RemoteBuffer.getRemoteAddress(ptr.diff(start).toInt(), last, current);
+    }
+    @Inline
     public int fillRootMarker() throws IOException {
-        reserve(8);
-        start.plus(head).store(Stream.ROOTMARKER);
+        Address mark = reserve(8);
+        mark.store(Stream.ROOTMARKER);
         if (IntruderOutStream.debug)
-            Utils.log("fillRootMark head: " + head + " remote addr: 0x" +
-                    Long.toHexString(RemoteBuffer.getRemoteAddress(head, last, current).toLong()));
+            Utils.log("fillRootMark head: " + (head - 8) + " remote addr: 0x" +
+                    Long.toHexString(RemoteBuffer.getRemoteAddress(mark.diff(start).toInt(), last, current).toLong()));
 
-        int ret = head;
-        head += 8;
-        return ret;
+        return mark.diff(start).toInt();
     }
 
     public Address fillObject(Object object, AddressArray tworet) throws IOException {
         int size = ObjectModel.getAlignedUpSize(object);
-        reserve(size);
-        Address ret = RemoteBuffer.getRemoteAddress(head + ObjectModel.REF_OFFSET, last, current);
-        Address stageAddr = start.plus(head + ObjectModel.REF_OFFSET);
-        tworet.set(0, stageAddr);
-        ObjectModel.copyObject(object, start.plus(head));
-//        ObjectModel.setRegisteredID(object, start.plus(aligned));
-        ObjectModel.setRemoteTIB(idManager, object, start.plus(head));
-        head += size;
+        Address header = reserve(size);
+        ObjectModel.copyObject(object, header);
+        setRemoteTIB(object.getClass(), header);
+        header = header.plus(ObjectModel.REF_OFFSET);
+        Address ret = getRemoteAddress(header);
+        tworet.set(0, header);
         assert(head < length);
         return ret;
     }
 
+    public void setRemoteTIB(Class cls, Address start) {
+        ObjectModel.setRemoteTIB(idManager, cls, start);
+    }
+    @Inline
     public Address fillHandle(Stream.Handle hanle) {
         return Address.zero();
     }
-
+    @Inline
     public Address queryEnumRemoteAddress(Enum e) {
         return idManager.queryEnumRemoteAddress(e);
     }
-
+    @Inline
     public void mayFlush() throws IOException {
         if (last != null) {
             flush();
         }
     }
-
+    @Inline
     public void flush() throws IOException {
         if (last != null) {
             assert (last.boundry != 0);

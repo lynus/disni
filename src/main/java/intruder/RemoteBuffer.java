@@ -4,6 +4,7 @@ import com.ibm.disni.verbs.IbvSendWR;
 import com.ibm.disni.verbs.IbvSge;
 import com.ibm.disni.verbs.IbvWC;
 import intruder.RPC.RPCClient;
+import org.vmmagic.pragma.Inline;
 import org.vmmagic.unboxed.Address;
 import org.vmmagic.unboxed.Extent;
 
@@ -29,15 +30,17 @@ public class RemoteBuffer extends Buffer{
         rpcClient.reserveBuffer(buffer);
         return buffer;
     }
-
+    @Inline
     public int freeSpace() {
         return length.toInt() - lastFlush;
     }
 
+    @Inline
     public void setBoundry(int stageHead) {
         this.boundry = stageHead + lastFlush;
     }
 
+    @Inline
     public static Address getRemoteAddress(int stagHead, RemoteBuffer last, RemoteBuffer current) {
         if (last != null) {
             assert (last.boundry != 0);
@@ -85,6 +88,9 @@ public class RemoteBuffer extends Buffer{
 
     public static void writeTwoBuffer(Endpoint ep, Address stageBuffer, int stageHead, int lkey, RemoteBuffer last, RemoteBuffer current) throws IOException{
         int last_size = last.boundry - last.lastFlush;
+        if (last_size > last.freeSpace()) {
+            Utils.log(" last_size " + last_size + " boundry " + last.boundry + " lastFlush " + last.lastFlush+ " length: " + last.length.toInt());
+        }
         IbvSendWR sendWRLast = last.assembleWR(stageBuffer, last_size, lkey);
         int remain = stageHead - last_size;
         IbvSendWR sendWRCurrent = current.assembleWR(stageBuffer.plus(last_size), remain, lkey);
